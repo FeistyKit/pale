@@ -99,7 +99,7 @@ impl Statement {
                     if let LispType::Integer(i) = *a.get() {
                         sum += i;
                     } else {
-                        // TODO: Better error reporting in Statement::resolve with incorrect types
+                        // TODO(#4): Better error reporting in Statement::resolve with incorrect types
                         return Err(SyntaxError {
                             msg: "Cannot add a non-integer type to an integer!".into(),
                         });
