@@ -61,7 +61,7 @@ impl Display for LispType {
 }
 
 pub trait Callable: Debug {
-    // TODO: Decide whether to keep the return type of Callable::call as a trait object or an
+    // TODO(#5): Decide whether to keep the return type of Callable::call as a trait object or an
     // associated type
     fn call(&self, args: &Vec<Var>) -> Result<Var, Box<dyn std::error::Error>>;
 }
