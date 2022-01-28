@@ -32,7 +32,7 @@ pub enum LispType {
     // TODOOOO(#1): Add more types, like lists and floating points;
     Integer(isize),
     Str(String),
-    // TODO: Add custom newtypes.
+    // TODO(#2): Add custom newtypes.
 }
 
 #[allow(dead_code)]
