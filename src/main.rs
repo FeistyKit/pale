@@ -1,13 +1,30 @@
-use std::{rc::Rc, cell::{RefCell, Ref, RefMut}, fmt::Display};
+use std::{
+    cell::{Ref, RefCell, RefMut},
+    fmt::Display,
+    rc::Rc,
+};
 
 fn main() {
     let a1 = Var::new(34);
     let a2 = Var::new(35);
-    let stmt = Statement {op: Operation::Add, args: vec![a1, a2]};
+    let stmt = Statement {
+        op: Operation::Add,
+        args: vec![a1, a2],
+    };
     let res = stmt.resolve().unwrap();
-    Statement {op: Operation::Print, args: vec![res]}.resolve().unwrap();
+    Statement {
+        op: Operation::Print,
+        args: vec![res],
+    }
+    .resolve()
+    .unwrap();
     let a1 = Var::new("Nice. ( ͡° ͜ʖ ͡°)");
-    Statement {op: Operation::Print, args: vec![a1]}.resolve().unwrap();
+    Statement {
+        op: Operation::Print,
+        args: vec![a1],
+    }
+    .resolve()
+    .unwrap();
 }
 
 #[derive(Debug, Clone)]
@@ -83,28 +100,34 @@ impl Statement {
                         sum += i;
                     } else {
                         // TODO: Better error reporting in Statement::resolve with incorrect types
-                        return Err(SyntaxError{msg: "Cannot add a non-integer type to an integer!".into()});
+                        return Err(SyntaxError {
+                            msg: "Cannot add a non-integer type to an integer!".into(),
+                        });
                     }
                 }
                 Ok(Var::new(sum))
-            },
+            }
             Operation::Subtract => {
                 let mut sum = 0;
                 for a in &self.args {
                     if let LispType::Integer(i) = *a.get() {
                         sum -= i;
                     } else {
-                        return Err(SyntaxError{msg: "Cannot subtract a non-integer type from an integer!".into()});
+                        return Err(SyntaxError {
+                            msg: "Cannot subtract a non-integer type from an integer!".into(),
+                        });
                     }
                 }
                 Ok(Var::new(sum))
-            },
+            }
             Operation::Print => {
                 if self.args.len() != 1 {
-                    return Err(SyntaxError{msg: "Print intrinsic requires exactly one argument!".into()})
+                    Err(SyntaxError {
+                        msg: "Print intrinsic requires exactly one argument!".into(),
+                    })
                 } else {
                     println!("{}", self.args[0]);
-                    return Ok(Var::new(0));
+                    Ok(Var::new(0))
                 }
             }
         }
@@ -121,16 +144,15 @@ impl From<String> for LispType {
         LispType::Str(i)
     }
 }
-impl From<T> for LispType where T: AsRef<str>{
-    fn from(i: T) -> Self {
+impl From<&str> for LispType {
+    fn from(i: &str) -> Self {
         LispType::Str(i.to_string())
     }
 }
 
-
 #[derive(Debug)]
 pub struct Var {
-    dat: Rc<RefCell<LispType>>
+    dat: Rc<RefCell<LispType>>,
 }
 
 impl Display for Var {
@@ -143,12 +165,12 @@ impl Display for Var {
 impl Var {
     fn new<T: Into<LispType>>(i: T) -> Var {
         Var {
-            dat: Rc::new(RefCell::new(i.into()))
+            dat: Rc::new(RefCell::new(i.into())),
         }
     }
     fn new_ref(&self) -> Var {
         Var {
-            dat: Rc::clone(&self.dat)
+            dat: Rc::clone(&self.dat),
         }
     }
     fn get(&self) -> Ref<LispType> {
