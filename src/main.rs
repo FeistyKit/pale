@@ -1,31 +1,29 @@
 use std::{
     cell::{Ref, RefCell, RefMut},
-    fmt::Display,
+    fmt::{Display, Debug},
     rc::Rc,
 };
 
 fn main() {
     let a1 = Var::new(34);
     let a2 = Var::new(35);
-    let stmt = Statement {
-        op: Operation::Add,
-        args: vec![a1, a2],
-    };
+    let stmt = Statement::new(Operation::Add, [a1, a2]);
     let res = stmt.resolve().unwrap();
-    Statement {
-        op: Operation::Print,
-        args: vec![res],
-    }
+    Statement::new(
+        Operation::Print,
+        vec![res],
+    )
     .resolve()
     .unwrap();
     let a1 = Var::new("Nice. ( ͡° ͜ʖ ͡°)");
-    Statement {
-        op: Operation::Print,
-        args: vec![a1],
-    }
+    Statement::new(
+        Operation::Print,
+        vec![a1],
+    )
     .resolve()
     .unwrap();
 }
+
 
 #[derive(Debug, Clone)]
 pub enum LispType {
@@ -62,6 +60,12 @@ impl Display for LispType {
     }
 }
 
+pub trait Callable: Debug {
+    // TODO: Decide whether to keep the return type of Callable::call as a trait object or an
+    // associated type
+    fn call(&self, args: &Vec<Var>) -> Result<Var, Box<dyn std::error::Error>>;
+}
+
 #[derive(Debug)]
 pub enum Operation {
     Add,
@@ -69,67 +73,82 @@ pub enum Operation {
     Print,
 }
 
-#[derive(Debug)]
-pub struct Statement {
-    args: Vec<Var>,
-    op: Operation,
-}
-
-#[derive(Debug)]
-pub struct SyntaxError {
-    msg: String,
-    // TODOO(#3): Give location of invalid syntax
-    // This will make it *soooo* much easier to debug code written in sul
-}
-
-impl std::error::Error for SyntaxError {}
-
-impl Display for SyntaxError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.msg)
-    }
-}
-
-impl Statement {
-    pub fn resolve(&self) -> Result<Var, SyntaxError> {
-        match self.op {
+impl Callable for Operation {
+    fn call(&self, args: &Vec<Var>) -> Result<Var, Box<dyn std::error::Error>> {
+        match self {
             Operation::Add => {
                 let mut sum = 0;
-                for a in &self.args {
+                for a in args {
                     if let LispType::Integer(i) = *a.get() {
                         sum += i;
                     } else {
                         // TODO(#4): Better error reporting in Statement::resolve with incorrect types
-                        return Err(SyntaxError {
-                            msg: "Cannot add a non-integer type to an integer!".into(),
-                        });
+                        return Err(TypeError::new("Cannot add a non-integer type to an integer!"));
                     }
                 }
                 Ok(Var::new(sum))
             }
             Operation::Subtract => {
                 let mut sum = 0;
-                for a in &self.args {
+                for a in args {
                     if let LispType::Integer(i) = *a.get() {
                         sum -= i;
                     } else {
-                        return Err(SyntaxError {
-                            msg: "Cannot subtract a non-integer type from an integer!".into(),
-                        });
+                        return Err(TypeError::new("Cannot subtract a non-integer type from an integer!"));
                     }
                 }
                 Ok(Var::new(sum))
             }
             Operation::Print => {
-                if self.args.len() != 1 {
-                    Err(SyntaxError {
-                        msg: "Print intrinsic requires exactly one argument!".into(),
-                    })
+                if args.len() != 1 {
+                    return Err(TypeError::new("Print intrinsic requires only one argument!"));
                 } else {
-                    println!("{}", self.args[0]);
+                    println!("{}", args[0]);
                     Ok(Var::new(0))
                 }
             }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Statement {
+    args: Vec<Var>,
+    op: Box<dyn Callable + 'static>,
+}
+
+#[derive(Debug)]
+pub struct TypeError {
+    msg: String,
+    // TODOO(#3): Give location of invalid syntax
+    // This will make it *soooo* much easier to debug code written in sul
+}
+
+impl TypeError {
+    pub fn new<T: ToString>(msg: T) -> Box<Self> {
+        Box::new(TypeError { msg: msg.to_string() })
+    }
+}
+
+impl std::error::Error for TypeError {}
+
+impl Display for TypeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.msg)
+    }
+}
+
+
+impl Statement {
+    pub fn resolve(&self) -> Result<Var, Box<dyn std::error::Error>> {
+        self.op.call(&self.args)
+    }
+    pub fn new<Op: Callable + 'static, AL: Into<Vec<Var>>>(o: Op, args: AL) -> Statement {
+        let o = Box::new(o);
+        let args = args.into();
+        Statement {
+            op: o,
+            args,
         }
     }
 }
@@ -160,6 +179,7 @@ impl Display for Var {
         write!(f, "{}", *self.get())
     }
 }
+
 
 #[allow(dead_code)]
 impl Var {
