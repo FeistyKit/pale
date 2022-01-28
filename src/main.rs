@@ -29,7 +29,7 @@ fn main() {
 
 #[derive(Debug, Clone)]
 pub enum LispType {
-    // TODOOOO: Add more types, like lists and floating points;
+    // TODOOOO(#1): Add more types, like lists and floating points;
     Integer(isize),
     Str(String),
     // TODO: Add custom newtypes.
