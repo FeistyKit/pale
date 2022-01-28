@@ -3,9 +3,11 @@ use std::{rc::Rc, cell::{RefCell, Ref, RefMut}, fmt::Display};
 fn main() {
     let a1 = Var::new(34);
     let a2 = Var::new(35);
-    let stmt = Statement {op: IntrinsicOp::Add, args: vec![a1, a2]};
-    println!("{}", stmt.resolve().unwrap());
-    println!("Nice. ( ͡° ͜ʖ ͡°)")
+    let stmt = Statement {op: Operation::Add, args: vec![a1, a2]};
+    let res = stmt.resolve().unwrap();
+    Statement {op: Operation::Print, args: vec![res]}.resolve().unwrap();
+    let a1 = Var::new("Nice. ( ͡° ͜ʖ ͡°)");
+    Statement {op: Operation::Print, args: vec![a1]}.resolve().unwrap();
 }
 
 #[derive(Debug, Clone)]
@@ -44,15 +46,16 @@ impl Display for LispType {
 }
 
 #[derive(Debug)]
-pub enum IntrinsicOp {
+pub enum Operation {
     Add,
     Subtract,
+    Print,
 }
 
 #[derive(Debug)]
 pub struct Statement {
     args: Vec<Var>,
-    op: IntrinsicOp,
+    op: Operation,
 }
 
 #[derive(Debug)]
@@ -73,7 +76,7 @@ impl Display for SyntaxError {
 impl Statement {
     pub fn resolve(&self) -> Result<Var, SyntaxError> {
         match self.op {
-            IntrinsicOp::Add => {
+            Operation::Add => {
                 let mut sum = 0;
                 for a in &self.args {
                     if let LispType::Integer(i) = *a.get() {
@@ -85,7 +88,7 @@ impl Statement {
                 }
                 Ok(Var::new(sum))
             },
-            IntrinsicOp::Subtract => {
+            Operation::Subtract => {
                 let mut sum = 0;
                 for a in &self.args {
                     if let LispType::Integer(i) = *a.get() {
@@ -96,6 +99,14 @@ impl Statement {
                 }
                 Ok(Var::new(sum))
             },
+            Operation::Print => {
+                if self.args.len() != 1 {
+                    return Err(SyntaxError{msg: "Print intrinsic requires exactly one argument!".into()})
+                } else {
+                    println!("{}", self.args[0]);
+                    return Ok(Var::new(0));
+                }
+            }
         }
     }
 }
@@ -108,6 +119,11 @@ impl From<isize> for LispType {
 impl From<String> for LispType {
     fn from(i: String) -> Self {
         LispType::Str(i)
+    }
+}
+impl From<T> for LispType where T: AsRef<str>{
+    fn from(i: T) -> Self {
+        LispType::Str(i.to_string())
     }
 }
 
