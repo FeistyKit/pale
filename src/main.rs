@@ -78,7 +78,7 @@ pub struct Statement {
 #[derive(Debug)]
 pub struct SyntaxError {
     msg: String,
-    // TODOO: Give location of invalid syntax
+    // TODOO(#3): Give location of invalid syntax
     // This will make it *soooo* much easier to debug code written in sul
 }
 
