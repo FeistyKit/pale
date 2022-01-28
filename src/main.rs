@@ -5,6 +5,7 @@ fn main() {
     let a2 = Var::new(35);
     let stmt = Statement {op: IntrinsicOp::Add, args: vec![a1, a2]};
     println!("{}", stmt.resolve().unwrap());
+    println!("Nice. ( ͡° ͜ʖ ͡°)")
 }
 
 #[derive(Debug, Clone)]
@@ -21,14 +22,14 @@ impl LispType {
         if let LispType::Str(s) = self {
             s
         } else {
-            panic!("Could not unwrap non-string value: {:?}", self);
+            panic!("Could not unwrap non-string value: {:?}. If you're seeing this, this is an internal error and you should report it at https://github.com/FeistyKit/sul/issues/new", self);
         }
     }
     fn unwrap_int(self) -> isize {
         if let LispType::Integer(i) = self {
             i
         } else {
-            panic!("Could not unwrap non-integer value: {:?}", self);
+            panic!("Could not unwrap non-integer value: {:?}. If you're seeing this, this is an internal error and you should report it at https://github.com/FeistyKit/sul/issues/new", self);
         }
     }
 }
