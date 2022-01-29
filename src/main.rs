@@ -1,7 +1,7 @@
 use std::{
     cell::{Ref, RefCell, RefMut},
     fmt::{Debug, Display},
-    rc::Rc,
+    rc::Rc, collections::BTreeMap,
 };
 
 fn main() {
@@ -117,6 +117,7 @@ pub struct Token {
     loc: Location,
     dat: TokenType,
 }
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Location {
     filename: String,
@@ -128,12 +129,18 @@ pub struct Location {
 pub enum TokenType {
     OpenParens,
     CloseParens,
+    Num(isize),
     Ident(String),
 }
 
 impl<T: ToString> From<T> for TokenType {
     fn from(orig: T) -> Self {
-        Self::Ident(orig.to_string())
+        let s = orig.to_string();
+        if let Ok(i) = s.parse::<isize>() {
+            Self::Num(i)
+        } else {
+            Self::Ident(orig.to_string())
+        }
     }
 }
 
@@ -215,11 +222,12 @@ fn tokenize(input: &str, name: &str) -> Result<Vec<Token>, String> {
     Ok(to_return)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum LispType {
     // TODOOOO(#1): Add more types, like lists and floating points;
     Integer(isize),
     Str(String),
+    Func(Box<dyn Callable>),
     // TODO(#2): Add custom newtypes.
 }
 
@@ -228,6 +236,7 @@ impl Display for LispType {
         match self {
             LispType::Integer(i) => write!(f, "{i}"),
             LispType::Str(s) => write!(f, "{s}"),
+            LispType::Func(fun) => write!(f, "{:?}", fun)
         }
     }
 }
@@ -344,6 +353,11 @@ impl From<&str> for LispType {
         LispType::Str(i.to_string())
     }
 }
+impl<T: Callable + 'static> From<T> for LispType {
+    fn from(i: T) -> Self {
+        LispType::Func(Box::new(i))
+    }
+}
 
 #[derive(Debug)]
 pub struct Var {
@@ -376,8 +390,16 @@ impl Var {
     }
 }
 
-impl std::clone::Clone for Var {
-    fn clone(&self) -> Self {
-        Var::new((*self.dat.borrow()).clone())
+#[derive(Debug)]
+pub struct Scope {
+    vars: BTreeMap<String, Var>,
+}
+
+impl std::default::Default for Scope {
+    fn default() -> Self {
+        let items = [("print", Operation::Print), ("+", Operation::Add), ("-", Operation::Subtract)];
+        Scope {
+            vars: items.into_iter().map(|x| (x.0.to_string(), Var::new(x.1))).collect(),
+        }
     }
 }
