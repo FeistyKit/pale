@@ -20,69 +20,88 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::{tokenize, Token, TokenType};
-
+    use crate::{tokenize, Location, Token, TokenType};
     #[test]
     fn test_tokenizer() {
         let expected_res = [
             Token {
-                filename: "-".to_string(),
-                line: 0,
-                col: 0,
+                loc: Location {
+                    filename: "-".to_string(),
+                    line: 0,
+                    col: 0,
+                },
                 dat: TokenType::OpenParens,
             },
             Token {
-                filename: "-".to_string(),
-                line: 0,
-                col: 1,
+                loc: Location {
+                    filename: "-".to_string(),
+                    line: 0,
+                    col: 1,
+                },
                 dat: TokenType::Ident("+".to_string()),
             },
             Token {
-                filename: "-".to_string(),
-                line: 0,
-                col: 3,
+                loc: Location {
+                    filename: "-".to_string(),
+                    line: 0,
+                    col: 3,
+                },
                 dat: TokenType::OpenParens,
             },
             Token {
-                filename: "-".to_string(),
-                line: 0,
-                col: 4,
+                loc: Location {
+                    filename: "-".to_string(),
+                    line: 0,
+                    col: 4,
+                },
                 dat: TokenType::Ident("-".to_string()),
             },
             Token {
-                filename: "-".to_string(),
-                line: 0,
-                col: 6,
+                loc: Location {
+                    filename: "-".to_string(),
+                    line: 0,
+                    col: 6,
+                },
                 dat: TokenType::Ident("1".to_string()),
             },
             Token {
-                filename: "-".to_string(),
-                line: 0,
-                col: 8,
+                loc: Location {
+                    filename: "-".to_string(),
+                    line: 0,
+                    col: 8,
+                },
                 dat: TokenType::Ident("23".to_string()),
             },
             Token {
-                filename: "-".to_string(),
-                line: 0,
-                col: 11,
+                loc: Location {
+                    filename: "-".to_string(),
+                    line: 0,
+                    col: 11,
+                },
                 dat: TokenType::Ident("23423423".to_string()),
             },
             Token {
-                filename: "-".to_string(),
-                line: 0,
-                col: 19,
+                loc: Location {
+                    filename: "-".to_string(),
+                    line: 0,
+                    col: 19,
+                },
                 dat: TokenType::CloseParens,
             },
             Token {
-                filename: "-".to_string(),
-                line: 0,
-                col: 20,
+                loc: Location {
+                    filename: "-".to_string(),
+                    line: 0,
+                    col: 20,
+                },
                 dat: TokenType::Ident("\"sliijioo\"".to_string()),
             },
             Token {
-                filename: "-".to_string(),
-                line: 0,
-                col: 31,
+                loc: Location {
+                    filename: "-".to_string(),
+                    line: 0,
+                    col: 31,
+                },
                 dat: TokenType::CloseParens,
             },
         ];
@@ -95,10 +114,14 @@ mod tests {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Token {
+    loc: Location,
+    dat: TokenType,
+}
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Location {
     filename: String,
     line: usize,
     col: usize,
-    dat: TokenType,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -132,9 +155,11 @@ fn tokenize(input: &str, name: &str) -> Result<Vec<Token>, String> {
                 ' ' => {
                     if token_buf.trim() != "" {
                         let tok = Token {
-                            line: token_line,
-                            col: token_col,
-                            filename: name.to_string(),
+                            loc: Location {
+                                line: token_line,
+                                col: token_col,
+                                filename: name.to_string(),
+                            },
                             dat: token_buf.into(),
                         };
                         to_return.push(tok);
@@ -145,9 +170,11 @@ fn tokenize(input: &str, name: &str) -> Result<Vec<Token>, String> {
                 }
                 '(' => {
                     let tok = Token {
-                        line: token_line,
-                        col: token_col,
-                        filename: name.to_string(),
+                        loc: Location {
+                            line: token_line,
+                            col: token_col,
+                            filename: name.to_string(),
+                        },
                         dat: TokenType::OpenParens,
                     };
                     to_return.push(tok);
@@ -157,9 +184,11 @@ fn tokenize(input: &str, name: &str) -> Result<Vec<Token>, String> {
                 ')' => {
                     if token_buf.trim() != "" {
                         let tok = Token {
-                            line: token_line,
-                            col: token_col,
-                            filename: name.to_string(),
+                            loc: Location {
+                                line: token_line,
+                                col: token_col,
+                                filename: name.to_string(),
+                            },
                             dat: token_buf.into(),
                         };
                         to_return.push(tok);
@@ -168,9 +197,11 @@ fn tokenize(input: &str, name: &str) -> Result<Vec<Token>, String> {
                         token_line = line_number;
                     }
                     let tok2 = Token {
-                        line: token_line,
-                        col: token_col,
-                        filename: name.to_string(),
+                        loc: Location {
+                            line: token_line,
+                            col: token_col,
+                            filename: name.to_string(),
+                        },
                         dat: TokenType::CloseParens,
                     };
                     to_return.push(tok2);
