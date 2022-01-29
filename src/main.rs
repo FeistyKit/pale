@@ -5,10 +5,6 @@ use std::{
 };
 
 fn main() {
-    println!("{:#?}", tokenize("(+ (- 1 23 23423423) \"sliijioo\")", "-"));
-}
-
-fn main2() {
     let a1 = Var::new(34);
     let a2 = Var::new(35);
     let stmt = Statement::new(Operation::Add, [a1, a2]);
