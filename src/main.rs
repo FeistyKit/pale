@@ -5,6 +5,10 @@ use std::{
 };
 
 fn main() {
+    println!("{:#?}", tokenize("(+ (- 1 23 23423423) \"sliijioo\")", "-"));
+}
+
+fn main2() {
     let a1 = Var::new(34);
     let a2 = Var::new(35);
     let stmt = Statement::new(Operation::Add, [a1, a2]);
@@ -16,6 +20,95 @@ fn main() {
     Statement::new(Operation::Print, vec![a1])
         .resolve()
         .unwrap();
+}
+
+#[derive(Debug)]
+pub struct Token {
+    filename: String,
+    line: usize,
+    col: usize,
+    dat: TokenType,
+}
+
+#[derive(Debug)]
+pub enum TokenType {
+    OpenParens,
+    CloseParens,
+    Ident(String)
+}
+
+impl<T: ToString> From<T> for TokenType {
+    fn from(orig: T) -> Self {
+        Self::Ident(orig.to_string())
+    }
+}
+
+// Guess the number of tokens that will be produced by tokenize from a single string
+// TODO: Improve the algorithm of `guess_capacity` for better performance
+fn guess_capacity(input: &str) -> usize {
+    input.len() / 5
+}
+
+fn tokenize(input: &str, name: &str) -> Result<Vec<Token>, String> {
+    let mut to_return = Vec::with_capacity(guess_capacity(input));
+
+    let mut token_buf = String::with_capacity(16);
+    let mut token_col = 0;
+    let mut token_line = 0;
+    for (line_number, line_data) in input.lines().enumerate() {
+        for (col_number, character) in line_data.trim().char_indices() {
+            match character {
+                ' ' => {
+                    let tok = Token {
+                        line: token_line,
+                        col: token_col,
+                        filename: name.to_string(),
+                        dat: token_buf.into(),
+                    };
+                    to_return.push(tok);
+                    token_buf = String::with_capacity(16);
+                    token_col = col_number + 1;
+                    token_line = line_number;
+                },
+                '(' => {
+                    let tok = Token {
+                        line: token_line,
+                        col: token_col,
+                        filename: name.to_string(),
+                        dat: TokenType::OpenParens,
+                    };
+                    to_return.push(tok);
+                    token_col = col_number + 1;
+                    token_line = line_number;
+                },
+                ')' => {
+                    if &token_buf != "" {
+                        let tok = Token {
+                            line: token_line,
+                            col: token_col,
+                            filename: name.to_string(),
+                            dat: token_buf.into(),
+                        };
+                        to_return.push(tok);
+                        token_buf = String::with_capacity(16);
+                        token_col = col_number;
+                        token_line = line_number;
+                    }
+                    let tok2 = Token {
+                        line: token_line,
+                        col: token_col,
+                        filename: name.to_string(),
+                        dat: TokenType::CloseParens,
+                    };
+                    to_return.push(tok2);
+                    token_col = col_number + 1;
+                    token_line = line_number;
+                }
+                _ => token_buf.push(character),
+            }
+        }
+    }
+    Ok(to_return)
 }
 
 #[derive(Debug, Clone)]
@@ -183,9 +276,4 @@ impl std::clone::Clone for Var {
     fn clone(&self) -> Self {
         Var::new((*self.dat.borrow()).clone())
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct Scope {
-    names: B,
 }
