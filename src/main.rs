@@ -1,10 +1,16 @@
 use std::{
     cell::{Ref, RefCell, RefMut},
+    collections::BTreeMap,
     fmt::{Debug, Display},
-    rc::Rc, collections::BTreeMap,
+    rc::Rc,
 };
 
 fn main() {
+    let r = tokenize("(+ (- 1 23 23423423) \"sliijioo\")", "-");
+    println!("{r:#?}")
+}
+
+fn main2() {
     let a1 = Var::new(34);
     let a2 = Var::new(35);
     let stmt = Statement::new(Operation::Add, [a1, a2]);
@@ -62,7 +68,7 @@ mod tests {
                     line: 0,
                     col: 6,
                 },
-                dat: TokenType::Ident("1".to_string()),
+                dat: TokenType::Num(1),
             },
             Token {
                 loc: Location {
@@ -70,7 +76,7 @@ mod tests {
                     line: 0,
                     col: 8,
                 },
-                dat: TokenType::Ident("23".to_string()),
+                dat: TokenType::Num(23),
             },
             Token {
                 loc: Location {
@@ -78,7 +84,7 @@ mod tests {
                     line: 0,
                     col: 11,
                 },
-                dat: TokenType::Ident("23423423".to_string()),
+                dat: TokenType::Num(23423423),
             },
             Token {
                 loc: Location {
@@ -236,7 +242,7 @@ impl Display for LispType {
         match self {
             LispType::Integer(i) => write!(f, "{i}"),
             LispType::Str(s) => write!(f, "{s}"),
-            LispType::Func(fun) => write!(f, "{:?}", fun)
+            LispType::Func(fun) => write!(f, "{:?}", fun),
         }
     }
 }
@@ -397,9 +403,16 @@ pub struct Scope {
 
 impl std::default::Default for Scope {
     fn default() -> Self {
-        let items = [("print", Operation::Print), ("+", Operation::Add), ("-", Operation::Subtract)];
+        let items = [
+            ("print", Operation::Print),
+            ("+", Operation::Add),
+            ("-", Operation::Subtract),
+        ];
         Scope {
-            vars: items.into_iter().map(|x| (x.0.to_string(), Var::new(x.1))).collect(),
+            vars: items
+                .into_iter()
+                .map(|x| (x.0.to_string(), Var::new(x.1)))
+                .collect(),
         }
     }
 }
