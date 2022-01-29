@@ -1,6 +1,6 @@
 use std::{
     cell::{Ref, RefCell, RefMut},
-    fmt::{Display, Debug},
+    fmt::{Debug, Display},
     rc::Rc,
 };
 
@@ -9,21 +9,14 @@ fn main() {
     let a2 = Var::new(35);
     let stmt = Statement::new(Operation::Add, [a1, a2]);
     let res = stmt.resolve().unwrap();
-    Statement::new(
-        Operation::Print,
-        vec![res],
-    )
-    .resolve()
-    .unwrap();
+    Statement::new(Operation::Print, vec![res])
+        .resolve()
+        .unwrap();
     let a1 = Var::new("Nice. ( ͡° ͜ʖ ͡°)");
-    Statement::new(
-        Operation::Print,
-        vec![a1],
-    )
-    .resolve()
-    .unwrap();
+    Statement::new(Operation::Print, vec![a1])
+        .resolve()
+        .unwrap();
 }
-
 
 #[derive(Debug, Clone)]
 pub enum LispType {
@@ -31,24 +24,6 @@ pub enum LispType {
     Integer(isize),
     Str(String),
     // TODO(#2): Add custom newtypes.
-}
-
-#[allow(dead_code)]
-impl LispType {
-    fn unwrap_string(self) -> String {
-        if let LispType::Str(s) = self {
-            s
-        } else {
-            panic!("Could not unwrap non-string value: {:?}. If you're seeing this, this is an internal error and you should report it at https://github.com/FeistyKit/sul/issues/new", self);
-        }
-    }
-    fn unwrap_int(self) -> isize {
-        if let LispType::Integer(i) = self {
-            i
-        } else {
-            panic!("Could not unwrap non-integer value: {:?}. If you're seeing this, this is an internal error and you should report it at https://github.com/FeistyKit/sul/issues/new", self);
-        }
-    }
 }
 
 impl Display for LispType {
@@ -83,7 +58,9 @@ impl Callable for Operation {
                         sum += i;
                     } else {
                         // TODO(#4): Better error reporting in Statement::resolve with incorrect types
-                        return Err(TypeError::new("Cannot add a non-integer type to an integer!"));
+                        return Err(TypeError::new(
+                            "Cannot add a non-integer type to an integer!",
+                        ));
                     }
                 }
                 Ok(Var::new(sum))
@@ -94,14 +71,18 @@ impl Callable for Operation {
                     if let LispType::Integer(i) = *a.get() {
                         sum -= i;
                     } else {
-                        return Err(TypeError::new("Cannot subtract a non-integer type from an integer!"));
+                        return Err(TypeError::new(
+                            "Cannot subtract a non-integer type from an integer!",
+                        ));
                     }
                 }
                 Ok(Var::new(sum))
             }
             Operation::Print => {
                 if args.len() != 1 {
-                    return Err(TypeError::new("Print intrinsic requires only one argument!"));
+                    return Err(TypeError::new(
+                        "Print intrinsic requires only one argument!",
+                    ));
                 } else {
                     println!("{}", args[0]);
                     Ok(Var::new(0))
@@ -126,7 +107,9 @@ pub struct TypeError {
 
 impl TypeError {
     pub fn new<T: ToString>(msg: T) -> Box<Self> {
-        Box::new(TypeError { msg: msg.to_string() })
+        Box::new(TypeError {
+            msg: msg.to_string(),
+        })
     }
 }
 
@@ -138,7 +121,6 @@ impl Display for TypeError {
     }
 }
 
-
 impl Statement {
     pub fn resolve(&self) -> Result<Var, Box<dyn std::error::Error>> {
         self.op.call(&self.args)
@@ -146,10 +128,7 @@ impl Statement {
     pub fn new<Op: Callable + 'static, AL: Into<Vec<Var>>>(o: Op, args: AL) -> Statement {
         let o = Box::new(o);
         let args = args.into();
-        Statement {
-            op: o,
-            args,
-        }
+        Statement { op: o, args }
     }
 }
 
@@ -180,7 +159,6 @@ impl Display for Var {
     }
 }
 
-
 #[allow(dead_code)]
 impl Var {
     fn new<T: Into<LispType>>(i: T) -> Var {
@@ -205,4 +183,9 @@ impl std::clone::Clone for Var {
     fn clone(&self) -> Self {
         Var::new((*self.dat.borrow()).clone())
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct Scope {
+    names: B,
 }
