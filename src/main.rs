@@ -18,7 +18,82 @@ fn main() {
         .unwrap();
 }
 
-#[derive(Debug)]
+#[cfg(test)]
+mod tests {
+    use crate::{tokenize, Token, TokenType};
+
+    #[test]
+    fn test_tokenizer() {
+        let expected_res = [
+            Token {
+                filename: "-".to_string(),
+                line: 0,
+                col: 0,
+                dat: TokenType::OpenParens,
+            },
+            Token {
+                filename: "-".to_string(),
+                line: 0,
+                col: 1,
+                dat: TokenType::Ident("+".to_string()),
+            },
+            Token {
+                filename: "-".to_string(),
+                line: 0,
+                col: 3,
+                dat: TokenType::OpenParens,
+            },
+            Token {
+                filename: "-".to_string(),
+                line: 0,
+                col: 4,
+                dat: TokenType::Ident("-".to_string()),
+            },
+            Token {
+                filename: "-".to_string(),
+                line: 0,
+                col: 6,
+                dat: TokenType::Ident("1".to_string()),
+            },
+            Token {
+                filename: "-".to_string(),
+                line: 0,
+                col: 8,
+                dat: TokenType::Ident("23".to_string()),
+            },
+            Token {
+                filename: "-".to_string(),
+                line: 0,
+                col: 11,
+                dat: TokenType::Ident("23423423".to_string()),
+            },
+            Token {
+                filename: "-".to_string(),
+                line: 0,
+                col: 19,
+                dat: TokenType::CloseParens,
+            },
+            Token {
+                filename: "-".to_string(),
+                line: 0,
+                col: 20,
+                dat: TokenType::Ident("\"sliijioo\"".to_string()),
+            },
+            Token {
+                filename: "-".to_string(),
+                line: 0,
+                col: 31,
+                dat: TokenType::CloseParens,
+            },
+        ];
+        assert_eq!(
+            Ok(expected_res.to_vec()),
+            tokenize("(+ (- 1 23 23423423) \"sliijioo\")", "-")
+        );
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Token {
     filename: String,
     line: usize,
@@ -26,11 +101,11 @@ pub struct Token {
     dat: TokenType,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum TokenType {
     OpenParens,
     CloseParens,
-    Ident(String)
+    Ident(String),
 }
 
 impl<T: ToString> From<T> for TokenType {
@@ -55,17 +130,19 @@ fn tokenize(input: &str, name: &str) -> Result<Vec<Token>, String> {
         for (col_number, character) in line_data.trim().char_indices() {
             match character {
                 ' ' => {
-                    let tok = Token {
-                        line: token_line,
-                        col: token_col,
-                        filename: name.to_string(),
-                        dat: token_buf.into(),
-                    };
-                    to_return.push(tok);
-                    token_buf = String::with_capacity(16);
-                    token_col = col_number + 1;
-                    token_line = line_number;
-                },
+                    if token_buf.trim() != "" {
+                        let tok = Token {
+                            line: token_line,
+                            col: token_col,
+                            filename: name.to_string(),
+                            dat: token_buf.into(),
+                        };
+                        to_return.push(tok);
+                        token_buf = String::with_capacity(16);
+                        token_col = col_number + 1;
+                        token_line = line_number;
+                    }
+                }
                 '(' => {
                     let tok = Token {
                         line: token_line,
@@ -76,9 +153,9 @@ fn tokenize(input: &str, name: &str) -> Result<Vec<Token>, String> {
                     to_return.push(tok);
                     token_col = col_number + 1;
                     token_line = line_number;
-                },
+                }
                 ')' => {
-                    if &token_buf != "" {
+                    if token_buf.trim() != "" {
                         let tok = Token {
                             line: token_line,
                             col: token_col,
