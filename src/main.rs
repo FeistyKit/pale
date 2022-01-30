@@ -6,7 +6,7 @@ use std::{
 };
 
 fn main() {
-    let source = "(+ 34 35)";
+    let source = "(+ 34 (+ 34 1))";
     println!("{}", run_lisp(source, "<provided>").unwrap());
     println!("Nice. ( ͡° ͜ʖ ͡°)");
 }
@@ -281,7 +281,7 @@ impl Callable for IntrinsicOp {
             IntrinsicOp::Add => {
                 let mut sum = 0;
                 for a in args {
-                    if let LispType::Integer(i) = *a.get() {
+                    if let LispType::Integer(i) = *a.resolve()?.get() {
                         sum += i;
                     } else {
                         // TODO(#4): Better error reporting in Statement::resolve with incorrect types
@@ -295,7 +295,7 @@ impl Callable for IntrinsicOp {
             IntrinsicOp::Subtract => {
                 let mut sum = 0;
                 for a in args {
-                    if let LispType::Integer(i) = *a.get() {
+                    if let LispType::Integer(i) = *a.resolve()?.get() {
                         sum -= i;
                     } else {
                         return Err(TypeError::new(
@@ -419,6 +419,12 @@ impl Var {
     fn get_mut(&self) -> RefMut<LispType> {
         self.dat.borrow_mut()
     }
+    fn resolve(&self) -> Result<Self, Box<dyn std::error::Error>> {
+        match &*self.dat.borrow() {
+            LispType::Statement(s) => s.resolve(),
+            _ => Ok(self.new_ref())
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -442,7 +448,7 @@ impl std::default::Default for Scope {
     }
 }
 
-pub fn make_ast(ts: &[Token], idents: &Scope, start: &Location) -> Result<Statement, String> {
+fn make_ast(ts: &[Token], idents: &Scope, start: &Location) -> Result<Statement, String> {
     // TODOOOOOOOOOOO: Declaring variables
     let mut open_stack = Vec::new();
     let mut args = Vec::new();
@@ -468,12 +474,18 @@ pub fn make_ast(ts: &[Token], idents: &Scope, start: &Location) -> Result<Statem
                 }
             },
             TokenType::Num(n) => {
-                args.push(Var::new(n.clone()));
+                if open_stack.is_empty() {
+                    args.push(Var::new(n.clone()));
+                }
             },
             TokenType::Ident(id) => {
                 match idents.vars.get(&id.to_string()) {
                     None => return Err(format!("{} - Unknown identifier `{id}`!", ts[i].loc)),
-                    Some(s) => args.push(s.new_ref()),
+                    Some(s) => {
+                        if open_stack.is_empty() {
+                            args.push(s.new_ref());
+                        }
+                    },
                 }
             },
         }
