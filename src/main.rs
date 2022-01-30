@@ -513,7 +513,7 @@ pub fn make_ast(ts: &[Token], idents: &Scope, start: &Location) -> Result<Statem
     let s = args.remove(0);
     if let LispType::Func(_) = *s.get() {
     } else {
-        // TODOO: Making raw lists
+        // TODOO(#8): Making raw lists
         return Err(format!("{start} - Cannot make a raw list (Yet..)!"));
     }
     Ok(Statement {
