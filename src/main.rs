@@ -468,7 +468,7 @@ impl std::default::Default for Scope {
 }
 
 pub fn make_ast(ts: &[Token], idents: &Scope, start: &Location) -> Result<Statement, String> {
-    // TODOOOOOOOOOOO: Declaring variables
+    // TODOOOOOOOOOOO(#7): Declaring variables
     let mut open_stack = Vec::new();
     let mut args = Vec::new();
 
