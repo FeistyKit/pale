@@ -6,22 +6,22 @@ use std::{
 };
 
 fn main() {
-    let r = tokenize("(+ (- 1 23 23423423) \"sliijioo\")", "-");
-    println!("{r:#?}")
-}
-
-fn main2() {
-    let a1 = Var::new(34);
+    let source = "(+ 34 35)";
+    let toks = tokenize(source, "<provided>").unwrap();
+    println!("{toks:#?}");
+    let ast = make_ast(&toks, &Scope::default(), &toks[0].loc.clone()).unwrap();
+    println!("{}", ast.resolve().unwrap());
+    /* let a1 = Var::new(34);
     let a2 = Var::new(35);
-    let stmt = Statement::new(Operation::Add, [a1, a2]);
+    let stmt = Statement::new(IntrinsicOp::Add, [a1, a2]);
     let res = stmt.resolve().unwrap();
-    Statement::new(Operation::Print, vec![res])
+    Statement::new(IntrinsicOp::Print, vec![res])
         .resolve()
         .unwrap();
     let a1 = Var::new("Nice. ( ͡° ͜ʖ ͡°)");
-    Statement::new(Operation::Print, vec![a1])
+    Statement::new(IntrinsicOp::Print, vec![a1])
         .resolve()
-        .unwrap();
+        .unwrap(); */
 }
 
 #[cfg(test)]
@@ -131,6 +131,12 @@ pub struct Location {
     col: usize,
 }
 
+impl Display for Location {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}:{}", self.filename, self.line, self.col)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum TokenType {
     OpenParens,
@@ -234,7 +240,17 @@ pub enum LispType {
     Integer(isize),
     Str(String),
     Func(Box<dyn Callable>),
+    Statement(Statement),
     // TODO(#2): Add custom newtypes.
+}
+
+impl LispType {
+    fn unwrap_func(&self) -> &Box<dyn Callable> {
+        match self {
+            LispType::Func(f) => &f,
+            _ => panic!("Expected to be LispType::Func but was actually {self}!")
+        }
+    }
 }
 
 impl Display for LispType {
@@ -242,7 +258,13 @@ impl Display for LispType {
         match self {
             LispType::Integer(i) => write!(f, "{i}"),
             LispType::Str(s) => write!(f, "{s}"),
-            LispType::Func(fun) => write!(f, "{:?}", fun),
+            LispType::Func(_) => write!(f, "<Function>"),
+            LispType::Statement(s) => {
+                match s.resolve() {
+                    Ok(s) => write!(f, "{s}"),
+                    Err(e) => write!(f, "{e}"),
+                }
+            }
         }
     }
 }
@@ -254,16 +276,16 @@ pub trait Callable: Debug {
 }
 
 #[derive(Debug)]
-pub enum Operation {
+pub enum IntrinsicOp {
     Add,
     Subtract,
     Print,
 }
 
-impl Callable for Operation {
+impl Callable for IntrinsicOp {
     fn call(&self, args: &Vec<Var>) -> Result<Var, Box<dyn std::error::Error>> {
         match self {
-            Operation::Add => {
+            IntrinsicOp::Add => {
                 let mut sum = 0;
                 for a in args {
                     if let LispType::Integer(i) = *a.get() {
@@ -271,13 +293,13 @@ impl Callable for Operation {
                     } else {
                         // TODO(#4): Better error reporting in Statement::resolve with incorrect types
                         return Err(TypeError::new(
-                            "Cannot add a non-integer type to an integer!",
+                            format!("Cannot add a non-integer type to an integer: {}!", a.get()),
                         ));
                     }
                 }
                 Ok(Var::new(sum))
             }
-            Operation::Subtract => {
+            IntrinsicOp::Subtract => {
                 let mut sum = 0;
                 for a in args {
                     if let LispType::Integer(i) = *a.get() {
@@ -290,7 +312,7 @@ impl Callable for Operation {
                 }
                 Ok(Var::new(sum))
             }
-            Operation::Print => {
+            IntrinsicOp::Print => {
                 if args.len() != 1 {
                     return Err(TypeError::new(
                         "Print intrinsic requires only one argument!",
@@ -307,7 +329,8 @@ impl Callable for Operation {
 #[derive(Debug)]
 pub struct Statement {
     args: Vec<Var>,
-    op: Box<dyn Callable + 'static>,
+    op: Var, // The inner value must be callable, so this won't panic (I hope)
+    res: RefCell<Option<Var>>
 }
 
 #[derive(Debug)]
@@ -335,12 +358,16 @@ impl Display for TypeError {
 
 impl Statement {
     pub fn resolve(&self) -> Result<Var, Box<dyn std::error::Error>> {
-        self.op.call(&self.args)
+        let r = self.op.get().unwrap_func().call(&self.args);
+        if let Ok(s) = &r {
+            *self.res.borrow_mut() = Some(s.new_ref());
+        }
+        r
     }
     pub fn new<Op: Callable + 'static, AL: Into<Vec<Var>>>(o: Op, args: AL) -> Statement {
         let o = Box::new(o);
         let args = args.into();
-        Statement { op: o, args }
+        Statement { op: Var::new(LispType::Func(o)), args, res: RefCell::new(None) }
     }
 }
 
@@ -362,6 +389,11 @@ impl From<&str> for LispType {
 impl<T: Callable + 'static> From<T> for LispType {
     fn from(i: T) -> Self {
         LispType::Func(Box::new(i))
+    }
+}
+impl From<Statement> for LispType {
+    fn from(i: Statement) -> Self {
+        LispType::Statement(i)
     }
 }
 
@@ -404,9 +436,9 @@ pub struct Scope {
 impl std::default::Default for Scope {
     fn default() -> Self {
         let items = [
-            ("print", Operation::Print),
-            ("+", Operation::Add),
-            ("-", Operation::Subtract),
+            ("print", IntrinsicOp::Print),
+            ("+", IntrinsicOp::Add),
+            ("-", IntrinsicOp::Subtract),
         ];
         Scope {
             vars: items
@@ -415,4 +447,55 @@ impl std::default::Default for Scope {
                 .collect(),
         }
     }
+}
+
+pub fn make_ast(ts: &[Token], idents: &Scope, start: &Location) -> Result<Statement, String> {
+    // TODOOOOOOOOOOO: Declaring variables
+    let mut open_stack = Vec::new();
+    let mut args = Vec::new();
+
+    let mut s = 0;
+    if let TokenType::OpenParens = ts[s].dat {
+        s = 1;
+    }
+    let mut e = ts.len() - 1;
+    if let TokenType::OpenParens = ts[e].dat {
+        e -= 1;
+    }
+    for i in s..e {
+        match &ts[i].dat {
+            TokenType::OpenParens => {
+                open_stack.push(i);
+            },
+            TokenType::CloseParens => {
+                if let Some(o) = open_stack.pop() {
+                    args.push(Var::new(make_ast(&ts[o + 1 .. i], &idents, &ts[i].loc)?));
+                } else {
+                    return Err(format!("{} - Unmatched closing parenthesis!", ts[i].loc));
+                }
+            },
+            TokenType::Num(n) => {
+                args.push(Var::new(n.clone()));
+            },
+            TokenType::Ident(id) => {
+                match idents.vars.get(&id.to_string()) {
+                    None => return Err(format!("{} - Unknown identifier `{id}`!", ts[i].loc)),
+                    Some(s) => args.push(s.new_ref()),
+                }
+            },
+        }
+    }
+    if args.first().is_none() {
+        return Err(format!("{} - Empty statements are not allowed!", start));
+    }
+    let s = args.remove(0);
+    if let LispType::Func(_) = *s.get() {} else {
+        // TODOO: Making raw lists
+        return Err(format!("{start} - Cannot make a raw list (Yet..)!"))
+    }
+    Ok(Statement {
+        args,
+        op: s,
+        res: RefCell::new(None),
+    })
 }
