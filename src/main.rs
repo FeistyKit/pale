@@ -19,7 +19,7 @@ pub fn run_lisp(source: &str, file: &str) -> Result<Var, Box<dyn std::error::Err
 
 #[cfg(test)]
 mod tests {
-    use crate::{tokenize, Location, Token, TokenType};
+    use crate::{tokenize, Location, Token, TokenType, run_lisp, LispType};
     #[test]
     fn test_tokenizer() {
         let expected_res = [
@@ -108,6 +108,11 @@ mod tests {
             Ok(expected_res.to_vec()),
             tokenize("(+ (- 1 23 23423423) \"sliijioo\")", "-")
         );
+    }
+    #[test]
+    fn test_addition() {
+        let source = "(+ 34 (+ 34 1))";
+        assert_eq!(*run_lisp(source, "<provided>").unwrap().get(), LispType::Integer(69));
     }
 }
 
