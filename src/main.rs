@@ -448,20 +448,21 @@ impl std::default::Default for Scope {
     }
 }
 
-fn make_ast(ts: &[Token], idents: &Scope, start: &Location) -> Result<Statement, String> {
+pub fn make_ast(ts: &[Token], idents: &Scope, start: &Location) -> Result<Statement, String> {
     // TODOOOOOOOOOOO: Declaring variables
     let mut open_stack = Vec::new();
     let mut args = Vec::new();
+
 
     let mut s = 0;
     if let TokenType::OpenParens = ts[s].dat {
         s = 1;
     }
     let mut e = ts.len() - 1;
-    if let TokenType::OpenParens = ts[e].dat {
+    if let TokenType::CloseParens = ts[e].dat {
         e -= 1;
     }
-    for i in s..e {
+    for i in s..=e {
         match &ts[i].dat {
             TokenType::OpenParens => {
                 open_stack.push(i);
