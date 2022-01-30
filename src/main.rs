@@ -1,25 +1,33 @@
 use std::{
     cell::{Ref, RefCell, RefMut},
     collections::BTreeMap,
+    env,
     fmt::{Debug, Display},
     rc::Rc,
 };
 
 fn main() {
-    let source = "(+ 34 (+ 34 1))";
-    println!("{}", run_lisp(source, "<provided>").unwrap());
-    println!("Nice. ( ͡° ͜ʖ ͡°)");
+    let source = env::args().nth(1).unwrap_or("(+ 34 (+ 34 1))".to_string());
+    println!("{}", run_lisp(&source, "<provided>").unwrap());
 }
 
 pub fn run_lisp(source: &str, file: &str) -> Result<Var, Box<dyn std::error::Error>> {
     let toks = tokenize(source, file)?;
-    let ast = make_ast(&toks, &Scope::default(), &Location {filename: file.to_string(), col: 0, line: 0})?;
+    let ast = make_ast(
+        &toks,
+        &Scope::default(),
+        &Location {
+            filename: file.to_string(),
+            col: 0,
+            line: 0,
+        },
+    )?;
     ast.resolve()
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{tokenize, Location, Token, TokenType, run_lisp, LispType};
+    use crate::{run_lisp, tokenize, LispType, Location, Token, TokenType};
     #[test]
     fn test_tokenizer() {
         let expected_res = [
@@ -112,7 +120,10 @@ mod tests {
     #[test]
     fn test_addition() {
         let source = "(+ 34 (+ 34 1))";
-        assert_eq!(*run_lisp(source, "<provided>").unwrap().get(), LispType::Integer(69));
+        assert_eq!(
+            *run_lisp(source, "<provided>").unwrap().get(),
+            LispType::Integer(69)
+        );
     }
 }
 
@@ -246,7 +257,7 @@ impl LispType {
     fn unwrap_func(&self) -> &Box<dyn Callable> {
         match self {
             LispType::Func(f) => &f,
-            _ => panic!("Expected to be LispType::Func but was actually {self}!")
+            _ => panic!("Expected to be LispType::Func but was actually {self}!"),
         }
     }
 }
@@ -257,12 +268,10 @@ impl Display for LispType {
             LispType::Integer(i) => write!(f, "{i}"),
             LispType::Str(s) => write!(f, "{s}"),
             LispType::Func(_) => write!(f, "<Function>"),
-            LispType::Statement(s) => {
-                match s.resolve() {
-                    Ok(s) => write!(f, "{s}"),
-                    Err(e) => write!(f, "{e}"),
-                }
-            }
+            LispType::Statement(s) => match s.resolve() {
+                Ok(s) => write!(f, "{s}"),
+                Err(e) => write!(f, "{e}"),
+            },
         }
     }
 }
@@ -290,9 +299,10 @@ impl Callable for IntrinsicOp {
                         sum += i;
                     } else {
                         // TODO(#4): Better error reporting in Statement::resolve with incorrect types
-                        return Err(TypeError::new(
-                            format!("Cannot add a non-integer type to an integer: {}!", a.get()),
-                        ));
+                        return Err(TypeError::new(format!(
+                            "Cannot add a non-integer type to an integer: {}!",
+                            a.get()
+                        )));
                     }
                 }
                 Ok(Var::new(sum))
@@ -328,7 +338,7 @@ impl Callable for IntrinsicOp {
 pub struct Statement {
     args: Vec<Var>,
     op: Var, // The inner value must be callable, so this won't panic (I hope)
-    res: RefCell<Option<Var>>
+    res: RefCell<Option<Var>>,
 }
 
 #[derive(Debug)]
@@ -365,7 +375,11 @@ impl Statement {
     pub fn new<Op: Callable + 'static, AL: Into<Vec<Var>>>(o: Op, args: AL) -> Statement {
         let o = Box::new(o);
         let args = args.into();
-        Statement { op: Var::new(LispType::Func(o)), args, res: RefCell::new(None) }
+        Statement {
+            op: Var::new(LispType::Func(o)),
+            args,
+            res: RefCell::new(None),
+        }
     }
 }
 
@@ -427,7 +441,7 @@ impl Var {
     fn resolve(&self) -> Result<Self, Box<dyn std::error::Error>> {
         match &*self.dat.borrow() {
             LispType::Statement(s) => s.resolve(),
-            _ => Ok(self.new_ref())
+            _ => Ok(self.new_ref()),
         }
     }
 }
@@ -458,7 +472,6 @@ pub fn make_ast(ts: &[Token], idents: &Scope, start: &Location) -> Result<Statem
     let mut open_stack = Vec::new();
     let mut args = Vec::new();
 
-
     let mut s = 0;
     if let TokenType::OpenParens = ts[s].dat {
         s = 1;
@@ -471,27 +484,25 @@ pub fn make_ast(ts: &[Token], idents: &Scope, start: &Location) -> Result<Statem
         match &ts[i].dat {
             TokenType::OpenParens => {
                 open_stack.push(i);
-            },
+            }
             TokenType::CloseParens => {
                 if let Some(o) = open_stack.pop() {
-                    args.push(Var::new(make_ast(&ts[o + 1 .. i], &idents, &ts[i].loc)?));
+                    args.push(Var::new(make_ast(&ts[o + 1..i], &idents, &ts[i].loc)?));
                 } else {
                     return Err(format!("{} - Unmatched closing parenthesis!", ts[i].loc));
                 }
-            },
+            }
             TokenType::Num(n) => {
                 if open_stack.is_empty() {
                     args.push(Var::new(n.clone()));
                 }
-            },
-            TokenType::Ident(id) => {
-                match idents.vars.get(&id.to_string()) {
-                    None => return Err(format!("{} - Unknown identifier `{id}`!", ts[i].loc)),
-                    Some(s) => {
-                        if open_stack.is_empty() {
-                            args.push(s.new_ref());
-                        }
-                    },
+            }
+            TokenType::Ident(id) => match idents.vars.get(&id.to_string()) {
+                None => return Err(format!("{} - Unknown identifier `{id}`!", ts[i].loc)),
+                Some(s) => {
+                    if open_stack.is_empty() {
+                        args.push(s.new_ref());
+                    }
                 }
             },
         }
@@ -500,9 +511,10 @@ pub fn make_ast(ts: &[Token], idents: &Scope, start: &Location) -> Result<Statem
         return Err(format!("{} - Empty statements are not allowed!", start));
     }
     let s = args.remove(0);
-    if let LispType::Func(_) = *s.get() {} else {
+    if let LispType::Func(_) = *s.get() {
+    } else {
         // TODOO: Making raw lists
-        return Err(format!("{start} - Cannot make a raw list (Yet..)!"))
+        return Err(format!("{start} - Cannot make a raw list (Yet..)!"));
     }
     Ok(Statement {
         args,
