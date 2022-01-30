@@ -7,8 +7,12 @@ use std::{
 };
 
 fn main() {
-    let source = env::args().nth(1).unwrap_or("(+ 34 (+ 34 1))".to_string());
-    println!("{}", run_lisp(&source, "<provided>").unwrap());
+    let source = env::args().nth(1).unwrap_or("(+ 34 35)".to_string());
+    let res = run_lisp(&source, "<provided>");
+    match res {
+        Ok(r) => println!("{r}"),
+        Err(e) => println!("An error occurred: {e}"),
+    }
 }
 
 pub fn run_lisp(source: &str, file: &str) -> Result<Var, Box<dyn std::error::Error>> {
