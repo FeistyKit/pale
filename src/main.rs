@@ -7,21 +7,14 @@ use std::{
 
 fn main() {
     let source = "(+ 34 35)";
-    let toks = tokenize(source, "<provided>").unwrap();
-    println!("{toks:#?}");
-    let ast = make_ast(&toks, &Scope::default(), &toks[0].loc.clone()).unwrap();
-    println!("{}", ast.resolve().unwrap());
-    /* let a1 = Var::new(34);
-    let a2 = Var::new(35);
-    let stmt = Statement::new(IntrinsicOp::Add, [a1, a2]);
-    let res = stmt.resolve().unwrap();
-    Statement::new(IntrinsicOp::Print, vec![res])
-        .resolve()
-        .unwrap();
-    let a1 = Var::new("Nice. ( ͡° ͜ʖ ͡°)");
-    Statement::new(IntrinsicOp::Print, vec![a1])
-        .resolve()
-        .unwrap(); */
+    println!("{}", run_lisp(source, "<provided>").unwrap());
+    println!("Nice. ( ͡° ͜ʖ ͡°)");
+}
+
+pub fn run_lisp(source: &str, file: &str) -> Result<Var, Box<dyn std::error::Error>> {
+    let toks = tokenize(source, file)?;
+    let ast = make_ast(&toks, &Scope::default(), &Location {filename: file.to_string(), col: 0, line: 0})?;
+    ast.resolve()
 }
 
 #[cfg(test)]
