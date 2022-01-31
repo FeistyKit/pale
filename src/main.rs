@@ -258,6 +258,18 @@ pub enum LispType {
     // TODO(#2): Add custom newtypes.
 }
 
+impl PartialEq for LispType {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (&LispType::Integer(lhs), &LispType::Integer(rhs)) => lhs == rhs,
+            (LispType::Str(lhs), LispType::Str(rhs)) => lhs == rhs,
+            (LispType::Statement(lhs), LispType::Statement(rhs)) => lhs == rhs,
+            (LispType::Func(_), LispType::Func(_)) => false,
+            _ => false,
+        }
+    }
+}
+
 impl LispType {
     fn unwrap_func(&self) -> &Box<dyn Callable> {
         match self {
@@ -356,7 +368,7 @@ impl Callable for IntrinsicOp {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Statement {
     args: Vec<Var>,
     op: Var, // The inner value must be callable, so this won't panic (I hope)
@@ -437,7 +449,7 @@ impl From<Statement> for LispType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Var {
     dat: Rc<RefCell<LispType>>,
 }
