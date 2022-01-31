@@ -255,8 +255,13 @@ pub enum LispType {
     Str(String),
     Func(Box<dyn Callable>),
     Statement(Statement),
+    List(Vec<Var>),
+    Floating(f64),
+    Nil,
     // TODO(#2): Add custom newtypes.
 }
+
+const FLOATING_EQ_RANGE: f64 = 0.001; // If two floats are less than this far apart, they are considered equal
 
 impl PartialEq for LispType {
     fn eq(&self, other: &Self) -> bool {
@@ -265,6 +270,12 @@ impl PartialEq for LispType {
             (LispType::Str(lhs), LispType::Str(rhs)) => lhs == rhs,
             (LispType::Statement(lhs), LispType::Statement(rhs)) => lhs == rhs,
             (LispType::Func(_), LispType::Func(_)) => false,
+            (LispType::Nil, LispType::Nil) => true,
+            (LispType::Floating(lhs), LispType::Floating(rhs)) => {
+                (lhs - rhs).abs() < FLOATING_EQ_RANGE
+            }
+            (LispType::List(lhs), LispType::List(rhs)) => lhs == rhs,
+            // TODOO: Comparing floats and integers
             _ => false,
         }
     }
@@ -289,6 +300,15 @@ impl Display for LispType {
                 Ok(s) => write!(f, "{s}"),
                 Err(e) => write!(f, "{e}"),
             },
+            LispType::List(l) => {
+                let mut t = String::new();
+                for item in l {
+                    t = format!("{t} {item}");
+                }
+                write!(f, "({t})")
+            }
+            LispType::Floating(fl) => write!(f, "{fl}"),
+            LispType::Nil => write!(f, "nil"),
         }
     }
 }
@@ -321,6 +341,9 @@ impl Callable for IntrinsicOp {
                 if args.len() < 2 {
                     println!("{} - Addition requires at least two arguments!", loc_called);
                 }
+                // match args[0].unwrap() {
+
+                // }
                 let mut sum = 0;
                 for a in args {
                     if let LispType::Integer(i) = *a.resolve()?.get() {
@@ -336,6 +359,12 @@ impl Callable for IntrinsicOp {
                 Ok(Var::new(sum))
             }
             IntrinsicOp::Subtract => {
+                if args.len() < 2 {
+                    println!(
+                        "{} - Subtraction requires at least two arguments!",
+                        loc_called
+                    );
+                }
                 let mut sum;
                 let t = args.get(0).unwrap();
                 if let LispType::Integer(i) = *t.resolve()?.get() {
