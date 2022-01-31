@@ -3,15 +3,16 @@ use std::{
     collections::BTreeMap,
     env,
     fmt::{Debug, Display},
+    process,
     rc::Rc,
 };
 
 fn main() {
     let source = env::args().nth(1).unwrap_or("(+ 34 35)".to_string());
     let res = run_lisp(&source, "<provided>");
-    match res {
-        Ok(r) => println!("{r}"),
-        Err(e) => println!("An error occurred: {e}"),
+    if let Err(e) = res {
+        println!("An error occurred: {e}");
+        process::exit(1);
     }
 }
 
@@ -283,7 +284,11 @@ impl Display for LispType {
 pub trait Callable: Debug {
     // TODO(#5): Decide whether to keep the return type of Callable::call as a trait object or an
     // associated type
-    fn call(&self, args: &Vec<Var>) -> Result<Var, Box<dyn std::error::Error>>;
+    fn call(
+        &self,
+        args: &Vec<Var>,
+        loc_called: &Location,
+    ) -> Result<Var, Box<dyn std::error::Error>>;
 }
 
 #[derive(Debug)]
@@ -294,9 +299,16 @@ pub enum IntrinsicOp {
 }
 
 impl Callable for IntrinsicOp {
-    fn call(&self, args: &Vec<Var>) -> Result<Var, Box<dyn std::error::Error>> {
+    fn call(
+        &self,
+        args: &Vec<Var>,
+        loc_called: &Location,
+    ) -> Result<Var, Box<dyn std::error::Error>> {
         match self {
             IntrinsicOp::Add => {
+                if args.len() < 2 {
+                    println!("{} - Addition requires at least two arguments!", loc_called);
+                }
                 let mut sum = 0;
                 for a in args {
                     if let LispType::Integer(i) = *a.resolve()?.get() {
@@ -312,8 +324,14 @@ impl Callable for IntrinsicOp {
                 Ok(Var::new(sum))
             }
             IntrinsicOp::Subtract => {
-                let mut sum = 0;
-                for a in args {
+                let mut sum;
+                let t = args.get(0).unwrap();
+                if let LispType::Integer(i) = *t.resolve()?.get() {
+                    sum = i
+                } else {
+                    return Err(TypeError::new("Cannot subtract from a non-integer!"));
+                }
+                for a in args.into_iter().skip(1) {
                     if let LispType::Integer(i) = *a.resolve()?.get() {
                         sum -= i;
                     } else {
@@ -343,6 +361,7 @@ pub struct Statement {
     args: Vec<Var>,
     op: Var, // The inner value must be callable, so this won't panic (I hope)
     res: RefCell<Option<Var>>,
+    loc: Location,
 }
 
 #[derive(Debug)]
@@ -370,19 +389,24 @@ impl Display for TypeError {
 
 impl Statement {
     pub fn resolve(&self) -> Result<Var, Box<dyn std::error::Error>> {
-        let r = self.op.get().unwrap_func().call(&self.args);
+        let r = self.op.get().unwrap_func().call(&self.args, &self.loc);
         if let Ok(s) = &r {
             *self.res.borrow_mut() = Some(s.new_ref());
         }
         r
     }
-    pub fn new<Op: Callable + 'static, AL: Into<Vec<Var>>>(o: Op, args: AL) -> Statement {
+    pub fn new<Op: Callable + 'static, AL: Into<Vec<Var>>>(
+        o: Op,
+        args: AL,
+        loc: Location,
+    ) -> Statement {
         let o = Box::new(o);
         let args = args.into();
         Statement {
             op: Var::new(LispType::Func(o)),
             args,
             res: RefCell::new(None),
+            loc,
         }
     }
 }
@@ -475,23 +499,26 @@ pub fn make_ast(ts: &[Token], idents: &Scope, start: &Location) -> Result<Statem
     // TODOOOOOOOOOOO(#7): Declaring variables
     let mut open_stack = Vec::new();
     let mut args = Vec::new();
+    let mut loc = None;
 
-    let mut s = 0;
-    if let TokenType::OpenParens = ts[s].dat {
-        s = 1;
+    let mut start_idx = 0;
+    if let TokenType::OpenParens = ts[start_idx].dat {
+        start_idx = 1;
     }
-    let mut e = ts.len() - 1;
-    if let TokenType::CloseParens = ts[e].dat {
-        e -= 1;
+    let mut end_idx = ts.len() - 1;
+    if let TokenType::CloseParens = ts[end_idx].dat {
+        end_idx -= 1;
     }
-    for i in s..=e {
+    for i in start_idx..=end_idx {
         match &ts[i].dat {
             TokenType::OpenParens => {
                 open_stack.push(i);
             }
             TokenType::CloseParens => {
                 if let Some(o) = open_stack.pop() {
-                    args.push(Var::new(make_ast(&ts[o + 1..i], &idents, &ts[i].loc)?));
+                    if open_stack.is_empty() {
+                        args.push(Var::new(make_ast(&ts[o..=i], &idents, &ts[o + 1].loc)?));
+                    }
                 } else {
                     return Err(format!("{} - Unmatched closing parenthesis!", ts[i].loc));
                 }
@@ -506,10 +533,17 @@ pub fn make_ast(ts: &[Token], idents: &Scope, start: &Location) -> Result<Statem
                 Some(s) => {
                     if open_stack.is_empty() {
                         args.push(s.new_ref());
+                        loc = Some(ts[i].loc.clone());
                     }
                 }
             },
         }
+    }
+    if !open_stack.is_empty() {
+        return Err(format!(
+            "{} - Unmatched opening parenthesis!",
+            ts[open_stack.pop().unwrap()].loc
+        ));
     }
     if args.first().is_none() {
         return Err(format!("{} - Empty statements are not allowed!", start));
@@ -524,5 +558,6 @@ pub fn make_ast(ts: &[Token], idents: &Scope, start: &Location) -> Result<Statem
         args,
         op: s,
         res: RefCell::new(None),
+        loc: loc.unwrap(),
     })
 }
