@@ -220,7 +220,7 @@ fn tokenize(input: &str, name: &str) -> Result<Vec<Token>, String> {
         for (col_number, character) in line_data.trim().char_indices() {
             match (character, in_string) {
                 ('\"', true) => {
-                    // TODOO: Support escaping in string literals.
+                    // TODOO(#9): Support escaping in string literals.
                     token_buf.push(character);
                     let tok = Token {
                         loc: Location {
@@ -401,6 +401,7 @@ pub enum IntrinsicOp {
     Add,
     Subtract,
     Print,
+    Multiply,
 }
 
 impl Callable for IntrinsicOp {
@@ -414,9 +415,7 @@ impl Callable for IntrinsicOp {
                 if args.len() < 2 {
                     println!("{} - Addition requires at least two arguments!", loc_called);
                 }
-                // match args[0].unwrap() {
-
-                // }
+                // TODO: Addition of floats and integers.
                 let mut sum = 0;
                 for a in args {
                     if let LispType::Integer(i) = *a.resolve()?.get() {
@@ -430,6 +429,31 @@ impl Callable for IntrinsicOp {
                     }
                 }
                 Ok(Var::new(sum))
+            }
+            IntrinsicOp::Multiply => {
+                if args.len() < 2 {
+                    println!(
+                        "{} - Multiplication requires at least two arguments!",
+                        loc_called
+                    );
+                }
+                let mut product;
+                let t = args.get(0).unwrap();
+                if let LispType::Integer(i) = *t.resolve()?.get() {
+                    product = i
+                } else {
+                    return Err(TypeError::new("Cannot multiply with a non-integer type!"));
+                }
+                for a in args.into_iter().skip(1) {
+                    if let LispType::Integer(i) = *a.resolve()?.get() {
+                        product *= i;
+                    } else {
+                        return Err(TypeError::new(
+                            "Cannot multiply a non-integer type with an integer!",
+                        ));
+                    }
+                }
+                Ok(Var::new(product))
             }
             IntrinsicOp::Subtract => {
                 if args.len() < 2 {
@@ -604,6 +628,7 @@ impl std::default::Default for Scope {
             ("print", IntrinsicOp::Print),
             ("+", IntrinsicOp::Add),
             ("-", IntrinsicOp::Subtract),
+            ("*", IntrinsicOp::Multiply),
         ];
         Scope {
             vars: items
