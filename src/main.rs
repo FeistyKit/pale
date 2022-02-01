@@ -74,7 +74,7 @@ mod tests {
                     line: 0,
                     col: 6,
                 },
-                dat: TokenType::Num(1),
+                dat: TokenType::Recognizable(LispType::Integer(1)),
             },
             Token {
                 loc: Location {
@@ -82,7 +82,7 @@ mod tests {
                     line: 0,
                     col: 8,
                 },
-                dat: TokenType::Num(23),
+                dat: TokenType::Recognizable(LispType::Integer(23)),
             },
             Token {
                 loc: Location {
@@ -90,7 +90,7 @@ mod tests {
                     line: 0,
                     col: 11,
                 },
-                dat: TokenType::Num(23423423),
+                dat: TokenType::Recognizable(LispType::Integer(23423423)),
             },
             Token {
                 loc: Location {
@@ -132,7 +132,7 @@ mod tests {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Token {
     loc: Location,
     dat: TokenType,
@@ -151,19 +151,27 @@ impl Display for Location {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum TokenType {
     OpenParens,
     CloseParens,
-    Num(isize),
+    Recognizable(LispType),
     Ident(String),
 }
 
 impl<T: ToString> From<T> for TokenType {
     fn from(orig: T) -> Self {
-        let s = orig.to_string();
+        let mut s = orig.to_string();
         if let Ok(i) = s.parse::<isize>() {
-            Self::Num(i)
+            Self::Recognizable(i.into())
+        } else if let Ok(f) = s.parse::<f64>() {
+            Self::Recognizable(f.into())
+        } else if s.starts_with('\"') && s.ends_with('\"') {
+            s.remove(0);
+            s.remove(s.len() - 1);
+            Self::Recognizable(LispType::Str(s))
+        } else if &s == "nil" {
+            Self::Recognizable(LispType::Nil)
         } else {
             Self::Ident(orig.to_string())
         }
@@ -250,7 +258,6 @@ fn tokenize(input: &str, name: &str) -> Result<Vec<Token>, String> {
 
 #[derive(Debug)]
 pub enum LispType {
-    // TODOOOO(#1): Add more types, like lists and floating points;
     Integer(isize),
     Str(String),
     Func(Box<dyn Callable>),
@@ -259,6 +266,20 @@ pub enum LispType {
     Floating(f64),
     Nil,
     // TODO(#2): Add custom newtypes.
+}
+
+impl Clone for LispType {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Integer(item) => Self::Integer(item.clone()),
+            Self::Str(item) => Self::Str(item.clone()),
+            Self::Func(_) => panic!("Tried to clone a function! If you see this, this is an internal error and you should report it at <https://github.com/FeistyKit/sul/issues/new>!"),
+            Self::Statement(_) => panic!("Tried to clone a statement! If you see this, this is an internal error and you should report it at <https://github.com/FeistyKit/sul/issues/new>!"),
+            Self::List(_) => panic!("Tried to clone a list! If you see this, this is an internal error and you should report it at <https://github.com/FeistyKit/sul/issues/new>!"),
+            Self::Floating(item) => Self::Floating(item.clone()),
+            Self::Nil => Self::Nil,
+        }
+    }
 }
 
 const FLOATING_EQ_RANGE: f64 = 0.001; // If two floats are less than this far apart, they are considered equal
@@ -477,6 +498,11 @@ impl From<Statement> for LispType {
         LispType::Statement(i)
     }
 }
+impl From<f64> for LispType {
+    fn from(i: f64) -> Self {
+        LispType::Floating(i)
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub struct Var {
@@ -564,7 +590,7 @@ pub fn make_ast(ts: &[Token], idents: &Scope, start: &Location) -> Result<Statem
                     return Err(format!("{} - Unmatched closing parenthesis!", ts[i].loc));
                 }
             }
-            TokenType::Num(n) => {
+            TokenType::Recognizable(n) => {
                 if open_stack.is_empty() {
                     args.push(Var::new(n.clone()));
                 }
