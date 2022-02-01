@@ -9,10 +9,18 @@ use std::{
 
 fn main() {
     let source = env::args().nth(1).unwrap_or("(+ 34 35)".to_string());
-    let res = run_lisp(&source, "<provided>");
-    if let Err(e) = res {
-        println!("An error occurred: {e}");
-        process::exit(1);
+    if env::args().any(|v| v.to_lowercase() == "--dump" || v.to_lowercase() == "-d") {
+        let res = run_lisp_dumped(&source, "<provided>");
+        if let Err(e) = res {
+            println!("An error occurred: {e}");
+            process::exit(1);
+        }
+    } else {
+        let res = run_lisp(&source, "<provided>");
+        if let Err(e) = res {
+            println!("An error occurred: {e}");
+            process::exit(1);
+        }
     }
 }
 
@@ -27,6 +35,22 @@ pub fn run_lisp(source: &str, file: &str) -> Result<Var, Box<dyn std::error::Err
             line: 0,
         },
     )?;
+    ast.resolve()
+}
+
+fn run_lisp_dumped(source: &str, file: &str) -> Result<Var, Box<dyn std::error::Error>> {
+    let toks = tokenize(source, file)?;
+    println!("Tokens = {toks:#?}");
+    let ast = make_ast(
+        &toks,
+        &Scope::default(),
+        &Location {
+            filename: file.to_string(),
+            col: 0,
+            line: 0,
+        },
+    )?;
+    println!("Ast = {ast:#?}");
     ast.resolve()
 }
 
@@ -190,10 +214,38 @@ fn tokenize(input: &str, name: &str) -> Result<Vec<Token>, String> {
     let mut token_buf = String::with_capacity(16);
     let mut token_col = 0;
     let mut token_line = 0;
+
+    let mut in_string = false;
     for (line_number, line_data) in input.lines().enumerate() {
         for (col_number, character) in line_data.trim().char_indices() {
-            match character {
-                ' ' => {
+            match (character, in_string) {
+                ('\"', true) => {
+                    // TODOO: Support escaping in string literals.
+                    token_buf.push(character);
+                    let tok = Token {
+                        loc: Location {
+                            line: token_line,
+                            col: token_col,
+                            filename: name.to_string(),
+                        },
+                        dat: token_buf.into(),
+                    };
+                    to_return.push(tok);
+                    token_buf = String::with_capacity(16);
+                    token_col = col_number + 1;
+                    token_line = line_number;
+                    in_string = false;
+                }
+                (_, true) => {
+                    token_buf.push(character);
+                }
+                ('\"', false) => {
+                    token_buf.push(character);
+                    in_string = true;
+                    token_col = col_number;
+                    token_line = line_number;
+                }
+                (' ', false) => {
                     if token_buf.trim() != "" {
                         let tok = Token {
                             loc: Location {
@@ -209,7 +261,7 @@ fn tokenize(input: &str, name: &str) -> Result<Vec<Token>, String> {
                         token_line = line_number;
                     }
                 }
-                '(' => {
+                ('(', false) => {
                     let tok = Token {
                         loc: Location {
                             line: token_line,
@@ -222,7 +274,7 @@ fn tokenize(input: &str, name: &str) -> Result<Vec<Token>, String> {
                     token_col = col_number + 1;
                     token_line = line_number;
                 }
-                ')' => {
+                (')', false) => {
                     if token_buf.trim() != "" {
                         let tok = Token {
                             loc: Location {
@@ -249,7 +301,7 @@ fn tokenize(input: &str, name: &str) -> Result<Vec<Token>, String> {
                     token_col = col_number + 1;
                     token_line = line_number;
                 }
-                _ => token_buf.push(character),
+                (_, false) => token_buf.push(character),
             }
         }
     }
