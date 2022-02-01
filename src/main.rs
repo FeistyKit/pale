@@ -348,7 +348,7 @@ impl PartialEq for LispType {
                 (lhs - rhs).abs() < FLOATING_EQ_RANGE
             }
             (LispType::List(lhs), LispType::List(rhs)) => lhs == rhs,
-            // TODOO: Comparing floats and integers
+            // TODOO(#10): Comparing floats and integers
             _ => false,
         }
     }
