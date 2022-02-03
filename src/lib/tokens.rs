@@ -51,12 +51,6 @@ impl<T: ToString> From<T> for TokenType {
     }
 }
 
-// Guess the number of tokens that will be produced by tokenize from a single string
-// TODO(#6): Improve the algorithm of `guess_capacity` for better performance
-fn guess_capacity(input: &str) -> usize {
-    input.len() / 5
-}
-
 #[derive(Debug, Clone, Copy)]
 enum TokenizerStatus {
     String,
