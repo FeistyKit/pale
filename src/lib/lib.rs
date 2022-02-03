@@ -17,7 +17,7 @@ pub fn run_lisp(source: &str, file: &str) -> Result<String, Box<dyn std::error::
             line: 0,
         },
     )?;
-    Ok(format!("{}", ast.resolve()?.unwrap()))
+    Ok(format!("{}", ast.resolve()?))
 }
 
 pub fn run_lisp_dumped(source: &str, file: &str) -> Result<String, Box<dyn std::error::Error>> {
@@ -33,7 +33,7 @@ pub fn run_lisp_dumped(source: &str, file: &str) -> Result<String, Box<dyn std::
         },
     )?;
     println!("Ast = {ast:#?}");
-    Ok(format!("{}", ast.resolve()?.unwrap()))
+    Ok(format!("{}", ast.resolve()?))
 }
 
 #[cfg(test)]
