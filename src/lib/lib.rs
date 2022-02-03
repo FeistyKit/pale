@@ -7,7 +7,7 @@ mod tokens;
 mod types;
 
 pub fn run_lisp(source: &str, file: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let toks = tokenize(source, file)?;
+    let toks = tokenize(source, file.to_string())?;
     let ast = make_ast(
         &toks,
         &Scope::default(),
@@ -21,7 +21,7 @@ pub fn run_lisp(source: &str, file: &str) -> Result<String, Box<dyn std::error::
 }
 
 pub fn run_lisp_dumped(source: &str, file: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let toks = tokenize(source, file)?;
+    let toks = tokenize(source, file.to_string())?;
     println!("Tokens = {toks:#?}");
     let ast = make_ast(
         &toks,
@@ -52,7 +52,7 @@ mod tests {
                     line: 0,
                     col: 0,
                 },
-                dat: TokenType::OpenParens,
+                dat: TokenType::StartStmt,
             },
             Token {
                 loc: Location {
@@ -68,7 +68,7 @@ mod tests {
                     line: 0,
                     col: 3,
                 },
-                dat: TokenType::OpenParens,
+                dat: TokenType::StartStmt,
             },
             Token {
                 loc: Location {
@@ -108,7 +108,7 @@ mod tests {
                     line: 0,
                     col: 19,
                 },
-                dat: TokenType::CloseParens,
+                dat: TokenType::EndStmt,
             },
             Token {
                 loc: Location {
@@ -124,7 +124,7 @@ mod tests {
                     line: 0,
                     col: 31,
                 },
-                dat: TokenType::CloseParens,
+                dat: TokenType::EndStmt,
             },
         ];
         assert_eq!(

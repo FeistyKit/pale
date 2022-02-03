@@ -137,19 +137,19 @@ pub(crate) fn make_ast(
     let mut loc = None;
 
     let mut start_idx = 0;
-    if let TokenType::OpenParens = ts[start_idx].dat {
+    if let TokenType::StartStmt = ts[start_idx].dat {
         start_idx = 1;
     }
     let mut end_idx = ts.len() - 1;
-    if let TokenType::CloseParens = ts[end_idx].dat {
+    if let TokenType::EndStmt = ts[end_idx].dat {
         end_idx -= 1;
     }
     for i in start_idx..=end_idx {
         match &ts[i].dat {
-            TokenType::OpenParens => {
+            TokenType::StartStmt => {
                 open_stack.push(i);
             }
-            TokenType::CloseParens => {
+            TokenType::EndStmt => {
                 if let Some(o) = open_stack.pop() {
                     if open_stack.is_empty() {
                         args.push(Var::new(make_ast(&ts[o..=i], &idents, &ts[o + 1].loc)?));

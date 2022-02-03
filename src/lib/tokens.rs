@@ -23,8 +23,8 @@ impl Display for Location {
 
 #[derive(Debug, PartialEq, Clone)]
 pub(crate) enum TokenType {
-    OpenParens,
-    CloseParens,
+    StartStmt,
+    EndStmt,
     Recognizable(LispType),
     Ident(String),
 }
@@ -60,40 +60,41 @@ fn guess_capacity(input: &str) -> usize {
     input.len() / 5
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum TokenizerStatus {
     String,
     Normal,
 }
 
 #[derive(Debug)]
-struct Tokenizer {
-    to_return: Vec<Token>,
+struct Tokenizer<'a> {
+    tokens: Vec<Token>,
     pos: (usize, usize),
     pos_locked: bool,
     token_buf: String,
     status: TokenizerStatus,
     default_buf_len: usize,
     filename: String,
+    source: &'a str,
 }
 
-impl Tokenizer {
-    fn new(filename: String) -> Self {
+impl<'a> Tokenizer<'a> {
+    fn new(input: &'a str, filename: String) -> Self {
         // This number can and might change, or I might change the method of getting it.
         let default_buf_len = 16;
         Tokenizer {
-            to_return: Vec::with_capacity(default_buf_len),
+            tokens: Vec::with_capacity(default_buf_len),
             pos: (0, 0),
             pos_locked: false,
             token_buf: String::with_capacity(default_buf_len),
             status: TokenizerStatus::Normal,
             default_buf_len,
             filename,
+            source: input,
         }
     }
 
     fn push_tok(&mut self) {
-
         match self.status {
             TokenizerStatus::Normal => {
                 if self.token_buf.trim() != "" {
@@ -103,9 +104,9 @@ impl Tokenizer {
                             col: self.pos.0,
                             filename: self.filename.clone(),
                         },
-                        dat: self.token_buf.into(),
+                        dat: self.token_buf.clone().into(),
                     };
-                    self.to_return.push(tok);
+                    self.tokens.push(tok);
                     self.token_buf = String::with_capacity(self.default_buf_len);
                     self.pos_locked = false;
                 }
@@ -120,92 +121,74 @@ impl Tokenizer {
                     },
                     dat: TokenType::new_str_lit(self.token_buf.clone()),
                 };
-                self.to_return.push(tok);
+                self.tokens.push(tok);
                 self.token_buf = String::with_capacity(self.default_buf_len);
                 self.pos_locked = false;
                 self.status = TokenizerStatus::Normal;
             }
-
         }
     }
 
-    fn tokenize(input: &str, )
-}
+    fn start_stmt(&mut self) {
+        let tok = Token {
+            loc: Location {
+                filename: self.filename.clone(),
+                line: self.pos.1,
+                col: self.pos.0,
+            },
+            dat: TokenType::StartStmt,
+        };
+        self.tokens.push(tok);
+    }
 
-pub(crate) fn tokenize(input: &str, name: &str) -> Result<Vec<Token>, String> {
-    for (line_number, line_data) in input.lines().enumerate() {
-        for (col_number, character) in line_data.trim().char_indices() {
-            match (character, in_string) {
-                ('\"', true) => {
-                    // TODOO(#9): Support escaping in string literals.
-                    token_buf.push(character);
-                    let tok = Token {
-                        loc: Location {
-                            line: token_line,
-                            col: token_col,
-                            filename: name.to_string(),
-                        },
-                        dat: token_buf.into(),
-                    };
-                    to_return.push(tok);
-                    token_buf = String::with_capacity(16);
-                    token_col = col_number + 1;
-                    token_line = line_number;
-                    in_string = false;
+    fn end_stmt(&mut self) {
+        if self.token_buf.trim() != "" {
+            let tok = Token {
+                loc: Location {
+                    filename: self.filename.clone(),
+                    line: self.pos.1,
+                    col: self.pos.0,
+                },
+                dat: TokenType::Ident(self.token_buf.clone()),
+            };
+            self.token_buf = String::with_capacity(self.default_buf_len);
+            self.tokens.push(tok);
+        }
+        self.pos_locked = false;
+        self.status = TokenizerStatus::Normal;
+        let tok = Token {
+            loc: Location {
+                filename: self.filename.clone(),
+                line: self.pos.1,
+                col: self.pos.0,
+            },
+            dat: TokenType::EndStmt,
+        };
+        self.tokens.push(tok);
+    }
+
+    fn tokenize(mut self) -> Result<Vec<Token>, String> {
+        for (line_number, line_data) in self.source.lines().enumerate() {
+            for (col_number, character) in line_data.trim().char_indices() {
+                match (character, self.status) {
+                    ('\"', TokenizerStatus::String) => self.push_tok(),
+                    (_, TokenizerStatus::String) => self.token_buf.push(character),
+                    ('\"', TokenizerStatus::Normal) => self.status = TokenizerStatus::String,
+                    (' ', TokenizerStatus::Normal) => self.push_tok(),
+                    ('(', TokenizerStatus::Normal) => self.start_stmt(),
+                    (')', TokenizerStatus::Normal) => self.end_stmt(),
+                    (_, TokenizerStatus::Normal) => self.token_buf.push(character),
                 }
-                (_, true) => {
-                    token_buf.push(character);
+                if !self.pos_locked {
+                    self.pos = (col_number, line_number);
                 }
-                ('\"', false) => {
-                    token_buf.push(character);
-                    in_string = true;
-                    token_col = col_number;
-                    token_line = line_number;
-                }
-                (' ', false) => {}
-                ('(', false) => {
-                    let tok = Token {
-                        loc: Location {
-                            line: token_line,
-                            col: token_col,
-                            filename: name.to_string(),
-                        },
-                        dat: TokenType::OpenParens,
-                    };
-                    to_return.push(tok);
-                    token_col = col_number + 1;
-                    token_line = line_number;
-                }
-                (')', false) => {
-                    if token_buf.trim() != "" {
-                        let tok = Token {
-                            loc: Location {
-                                line: token_line,
-                                col: token_col,
-                                filename: name.to_string(),
-                            },
-                            dat: token_buf.into(),
-                        };
-                        to_return.push(tok);
-                        token_buf = String::with_capacity(16);
-                        token_col = col_number;
-                        token_line = line_number;
-                    }
-                    let tok2 = Token {
-                        loc: Location {
-                            line: token_line,
-                            col: token_col,
-                            filename: name.to_string(),
-                        },
-                        dat: TokenType::CloseParens,
-                    };
-                    to_return.push(tok2);
-                    token_col = col_number + 1;
-                    token_line = line_number;
-                }
-                (_, false) => token_buf.push(character),
             }
         }
+        Ok(self.tokens)
     }
-    Ok(to_return)
+}
+
+pub fn tokenize(source: &str, filename: String) -> Result<Vec<Token>, String> {
+    let tokenizer = Tokenizer::new(source, filename);
+    tokenizer.tokenize()
 }
