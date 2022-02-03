@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use std::mem;
 
 use crate::types::LispType;
 
@@ -37,15 +38,11 @@ impl TokenType {
 
 impl<T: ToString> From<T> for TokenType {
     fn from(orig: T) -> Self {
-        let mut s = orig.to_string();
+        let s = orig.to_string().trim().to_string();
         if let Ok(i) = s.parse::<isize>() {
             Self::Recognizable(i.into())
         } else if let Ok(f) = s.parse::<f64>() {
             Self::Recognizable(f.into())
-        } else if s.starts_with('\"') && s.ends_with('\"') {
-            s.remove(0);
-            s.remove(s.len() - 1);
-            Self::Recognizable(LispType::Str(s))
         } else if &s == "nil" {
             Self::Recognizable(LispType::Nil)
         } else {
@@ -104,10 +101,13 @@ impl<'a> Tokenizer<'a> {
                             col: self.pos.0,
                             filename: self.filename.clone(),
                         },
-                        dat: self.token_buf.clone().into(),
+                        dat: mem::replace(
+                            &mut self.token_buf,
+                            String::with_capacity(self.default_buf_len),
+                        )
+                        .into(),
                     };
                     self.tokens.push(tok);
-                    self.token_buf = String::with_capacity(self.default_buf_len);
                     self.pos_locked = false;
                 }
             }
@@ -119,10 +119,12 @@ impl<'a> Tokenizer<'a> {
                         col: self.pos.0,
                         filename: self.filename.clone(),
                     },
-                    dat: TokenType::new_str_lit(self.token_buf.clone()),
+                    dat: TokenType::new_str_lit(mem::replace(
+                        &mut self.token_buf,
+                        String::with_capacity(self.default_buf_len),
+                    )),
                 };
                 self.tokens.push(tok);
-                self.token_buf = String::with_capacity(self.default_buf_len);
                 self.pos_locked = false;
                 self.status = TokenizerStatus::Normal;
             }
@@ -142,14 +144,19 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn end_stmt(&mut self) {
-        if self.token_buf.trim() != "" {
+        self.token_buf = self.token_buf.trim().to_string();
+        if &self.token_buf != "" {
             let tok = Token {
                 loc: Location {
                     filename: self.filename.clone(),
                     line: self.pos.1,
                     col: self.pos.0,
                 },
-                dat: TokenType::Ident(self.token_buf.clone()),
+                dat: mem::replace(
+                    &mut self.token_buf,
+                    String::with_capacity(self.default_buf_len),
+                )
+                .into(),
             };
             self.token_buf = String::with_capacity(self.default_buf_len);
             self.tokens.push(tok);
