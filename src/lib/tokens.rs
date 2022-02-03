@@ -66,6 +66,7 @@ enum TokenizerStatus {
 #[derive(Debug)]
 struct Tokenizer<'a> {
     tokens: Vec<Token>,
+    right_assocs: usize,
     pos: (usize, usize),
     pos_locked: bool,
     token_buf: String,
@@ -88,6 +89,7 @@ impl<'a> Tokenizer<'a> {
             default_buf_len,
             filename,
             source: input,
+            right_assocs: 0,
         }
     }
 
@@ -161,6 +163,17 @@ impl<'a> Tokenizer<'a> {
             self.token_buf = String::with_capacity(self.default_buf_len);
             self.tokens.push(tok);
         }
+        for _ in 0..self.right_assocs {
+            let tok = Token {
+                loc: Location {
+                    filename: self.filename.clone(),
+                    line: self.pos.1,
+                    col: self.pos.0,
+                },
+                dat: TokenType::EndStmt,
+            };
+            self.tokens.push(tok);
+        }
         self.pos_locked = false;
         self.status = TokenizerStatus::Normal;
         let tok = Token {
@@ -184,6 +197,10 @@ impl<'a> Tokenizer<'a> {
                     (' ', TokenizerStatus::Normal) => self.push_tok(),
                     ('(', TokenizerStatus::Normal) => self.start_stmt(),
                     (')', TokenizerStatus::Normal) => self.end_stmt(),
+                    ('$', TokenizerStatus::Normal) => {
+                        self.start_stmt();
+                        self.right_assocs += 1;
+                    }
                     (_, TokenizerStatus::Normal) => self.token_buf.push(character),
                 }
                 if !self.pos_locked {
