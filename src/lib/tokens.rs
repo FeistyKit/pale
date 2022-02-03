@@ -168,6 +168,7 @@ impl<'a> Tokenizer<'a> {
             };
             self.tokens.push(tok);
         }
+        self.right_assocs = 0;
         self.pos_locked = false;
         self.status = TokenizerStatus::Normal;
         let tok = Token {
@@ -201,6 +202,18 @@ impl<'a> Tokenizer<'a> {
                     self.pos = (col_number, line_number);
                 }
             }
+        }
+
+        for _ in 0..self.right_assocs {
+            let tok = Token {
+                loc: Location {
+                    filename: self.filename.clone(),
+                    line: self.pos.1,
+                    col: self.pos.0,
+                },
+                dat: TokenType::EndStmt,
+            };
+            self.tokens.push(tok);
         }
         Ok(self.tokens)
     }
