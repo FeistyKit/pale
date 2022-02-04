@@ -1,4 +1,5 @@
 use crate::callable::{Callable, IntrinsicOp};
+use crate::error::LispErrors;
 use crate::tokens::{Token, TokenType};
 use crate::types::LispType;
 use crate::Location;
@@ -28,31 +29,8 @@ pub(crate) struct Statement {
     pub(crate) loc: Location,
 }
 
-#[derive(Debug)]
-pub struct TypeError {
-    pub(crate) msg: String,
-    // TODOO(#3): Give location of invalid syntax
-    // This will make it *soooo* much easier to debug code written in sul
-}
-
-impl TypeError {
-    pub fn new<T: ToString>(msg: T) -> Box<Self> {
-        Box::new(TypeError {
-            msg: msg.to_string(),
-        })
-    }
-}
-
-impl std::error::Error for TypeError {}
-
-impl Display for TypeError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.msg)
-    }
-}
-
 impl Statement {
-    pub(crate) fn resolve(&self) -> Result<Var, Box<dyn std::error::Error>> {
+    pub(crate) fn resolve(&self) -> Result<Var, LispErrors> {
         let r = self.op.get().unwrap_func().call(&self.args, &self.loc);
         if let Ok(s) = &r {
             *self.res.borrow_mut() = Some(s.new_ref());
@@ -93,7 +71,7 @@ impl Var {
     pub(crate) fn get_mut(&self) -> RefMut<LispType> {
         self.dat.borrow_mut()
     }
-    pub(crate) fn resolve(&self) -> Result<Self, Box<dyn std::error::Error>> {
+    pub(crate) fn resolve(&self) -> Result<Self, LispErrors> {
         match &*self.dat.borrow() {
             LispType::Statement(s) => s.resolve(),
             _ => Ok(self.new_ref()),
@@ -130,7 +108,7 @@ pub(crate) fn make_ast(
     ts: &[Token],
     idents: &Scope,
     start: &Location,
-) -> Result<Statement, String> {
+) -> Result<Statement, LispErrors> {
     // TODOOOOOOOOOOO(#7): Declaring variables
     let mut open_stack = Vec::new();
     let mut args = Vec::new();
@@ -155,7 +133,9 @@ pub(crate) fn make_ast(
                         args.push(Var::new(make_ast(&ts[o..=i], &idents, &ts[o + 1].loc)?));
                     }
                 } else {
-                    return Err(format!("{} - Unmatched closing parenthesis!", ts[i].loc));
+                    return Err(LispErrors::new()
+                        .error(&ts[i].loc, "Unmatched closing parentheses!")
+                        .note(None, "Delete it."));
                 }
             }
             TokenType::Recognizable(n) => {
@@ -164,7 +144,11 @@ pub(crate) fn make_ast(
                 }
             }
             TokenType::Ident(id) => match idents.vars.get(&id.to_string()) {
-                None => return Err(format!("{} - Unknown identifier `{id}`!", ts[i].loc)),
+                None => {
+                    return Err(
+                        LispErrors::new().error(&ts[i].loc, format!("Unknown identifier `{id}`!"))
+                    )
+                }
                 Some(s) => {
                     if open_stack.is_empty() {
                         args.push(s.new_ref());
@@ -175,19 +159,23 @@ pub(crate) fn make_ast(
         }
     }
     if !open_stack.is_empty() {
-        return Err(format!(
-            "{} - Unmatched opening parenthesis!",
-            ts[open_stack.pop().unwrap()].loc
-        ));
+        return Err(LispErrors::new()
+            .error(
+                &ts[open_stack.pop().unwrap()].loc,
+                "Unmatched opening parentheses!",
+            )
+            .note(None, "Deleting it might fix this error."));
     }
     if args.first().is_none() {
-        return Err(format!("{} - Empty statements are not allowed!", start));
+        return Err(LispErrors::new().error(&start, "Empty statements are not allowed!"));
     }
     let s = args.remove(0);
     if let LispType::Func(_) = *s.get() {
     } else {
         // TODOO(#8): Making raw lists
-        return Err(format!("{start} - Cannot make a raw list (Yet..)!"));
+        return Err(LispErrors::new()
+            .error(&start, "Raw lists are not available (Yet...)!")
+            .note(None, "Use the `list` intrinsic to convert this to a list."));
     }
     Ok(Statement {
         args,

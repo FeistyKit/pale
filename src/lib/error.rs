@@ -6,12 +6,24 @@ pub struct LispErrors {
     errs: Vec<(String, Vec<String>)>,
 }
 
+impl Display for LispErrors {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for err in &self.errs {
+            write!(f, "{}", err.0)?;
+            for note in &err.1 {
+                write!(f, "\n\t{}", note)?;
+            }
+        }
+        Ok(())
+    }
+}
+
 impl LispErrors {
     pub fn new() -> Self {
         Self { errs: Vec::new() }
     }
     pub fn error<T: Display>(mut self, loc: &Location, err: T) -> Self {
-        self.errs.push((format!("{loc} - {err}!"), Vec::new()));
+        self.errs.push((format!("{loc} - {err}"), Vec::new()));
         self
     }
     pub fn note<'a, T: Display, L: Into<Option<&'a Location>>>(mut self, loc: L, err: T) -> Self {

@@ -1,12 +1,15 @@
+use error::LispErrors;
+
 use crate::ast::{make_ast, Scope, Var};
 use crate::tokens::{tokenize, Location};
 
 mod ast;
 mod callable;
+mod error;
 mod tokens;
 mod types;
 
-pub fn run_lisp(source: &str, file: &str) -> Result<String, Box<dyn std::error::Error>> {
+pub fn run_lisp(source: &str, file: &str) -> Result<String, LispErrors> {
     let toks = tokenize(source, file.to_string())?;
     let ast = make_ast(
         &toks,
@@ -20,7 +23,7 @@ pub fn run_lisp(source: &str, file: &str) -> Result<String, Box<dyn std::error::
     Ok(format!("{}", ast.resolve()?))
 }
 
-pub fn run_lisp_dumped(source: &str, file: &str) -> Result<String, Box<dyn std::error::Error>> {
+pub fn run_lisp_dumped(source: &str, file: &str) -> Result<String, LispErrors> {
     let toks = tokenize(source, file.to_string())?;
     println!("Tokens = {toks:#?}");
     let ast = make_ast(

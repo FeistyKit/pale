@@ -1,6 +1,7 @@
 use std::fmt::Display;
 use std::mem;
 
+use crate::error::LispErrors;
 use crate::types::LispType;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -182,7 +183,7 @@ impl<'a> Tokenizer<'a> {
         self.tokens.push(tok);
     }
 
-    fn tokenize(mut self) -> Result<Vec<Token>, String> {
+    fn tokenize(mut self) -> Result<Vec<Token>, LispErrors> {
         for (line_number, line_data) in self.source.lines().enumerate() {
             for (col_number, character) in line_data.trim().char_indices() {
                 match (character, self.status) {
@@ -219,7 +220,7 @@ impl<'a> Tokenizer<'a> {
     }
 }
 
-pub fn tokenize(source: &str, filename: String) -> Result<Vec<Token>, String> {
+pub fn tokenize(source: &str, filename: String) -> Result<Vec<Token>, LispErrors> {
     let tokenizer = Tokenizer::new(source, filename);
     tokenizer.tokenize()
 }
