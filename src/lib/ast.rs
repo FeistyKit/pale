@@ -138,6 +138,7 @@ pub(crate) fn make_ast(
                         .note(None, "Delete it."));
                 }
             }
+            TokenType::KeyWord(k) => todo!(),
             TokenType::Recognizable(n) => {
                 if open_stack.is_empty() {
                     args.push(Var::new(n.clone()));

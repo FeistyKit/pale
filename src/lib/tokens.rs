@@ -1,5 +1,6 @@
 use std::fmt::Display;
 use std::mem;
+use std::str::FromStr;
 
 use crate::error::LispErrors;
 use crate::types::LispType;
@@ -22,25 +23,42 @@ impl Display for Location {
         write!(f, "{}:{}:{}", self.filename, self.line, self.col)
     }
 }
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub(crate) enum KeyWord {
+    Let,
+}
 
 #[derive(Debug, PartialEq, Clone)]
 pub(crate) enum TokenType {
     StartStmt,
     EndStmt,
+    KeyWord(KeyWord),
     Recognizable(LispType),
     Ident(String),
 }
 
+impl FromStr for KeyWord {
+    type Err = &'static str;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "let" => Ok(Self::Let),
+            _ => Err("Unknown keyword!"),
+        }
+    }
+}
+
 impl TokenType {
     fn new_str_lit(source: String) -> Self {
-        Self::Ident(source)
+        Self::Recognizable(LispType::Str(source))
     }
 }
 
 impl<T: ToString> From<T> for TokenType {
     fn from(orig: T) -> Self {
         let s = orig.to_string().trim().to_string();
-        if let Ok(i) = s.parse::<isize>() {
+        if let Ok(k) = s.parse::<KeyWord>() {
+            Self::KeyWord(k)
+        } else if let Ok(i) = s.parse::<isize>() {
             Self::Recognizable(i.into())
         } else if let Ok(f) = s.parse::<f64>() {
             Self::Recognizable(f.into())
