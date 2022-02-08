@@ -111,6 +111,7 @@ impl<'a> AstParser<'a> {
             args: Vec::new(),
         }
     }
+
     fn parse(mut self) -> Result<Statement, LispErrors> {
         if self.ts.len() < 2 {
             return Err(LispErrors::new().error(self.start, "Empty statements are not allowed!"));
@@ -122,6 +123,9 @@ impl<'a> AstParser<'a> {
         let mut end_idx = self.ts.len() - 1;
         if let TokenType::EndStmt = self.ts[end_idx].dat {
             end_idx -= 1;
+        }
+        if start_idx > end_idx {
+            return Err(LispErrors::new().error(self.start, "Empty statements are not allowed!"));
         }
         for i in start_idx..=end_idx {
             match &self.ts[i].dat {
