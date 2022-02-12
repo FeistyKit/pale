@@ -13,7 +13,7 @@ pub fn run_lisp(source: &str, file: &str) -> Result<String, LispErrors> {
     let toks = tokenize(source, file.to_string())?;
     let ast = make_ast(
         &toks,
-        &Scope::default(),
+        &mut Scope::default(),
         &Location {
             filename: file.to_string(),
             col: 0,
@@ -28,7 +28,7 @@ pub fn run_lisp_dumped(source: &str, file: &str) -> Result<String, LispErrors> {
     println!("Tokens = {toks:#?}");
     let ast = make_ast(
         &toks,
-        &Scope::default(),
+        &mut Scope::default(),
         &Location {
             filename: file.to_string(),
             col: 0,

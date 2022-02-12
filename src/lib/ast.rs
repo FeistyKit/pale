@@ -37,20 +37,6 @@ impl Statement {
         }
         r
     }
-    pub(crate) fn new<Op: Callable + 'static, AL: Into<Vec<Var>>>(
-        o: Op,
-        args: AL,
-        loc: Location,
-    ) -> Statement {
-        let o = Box::new(o);
-        let args = args.into();
-        Statement {
-            op: Var::new(LispType::Func(o)),
-            args,
-            res: RefCell::new(None),
-            loc,
-        }
-    }
 }
 
 #[allow(dead_code)]
@@ -104,84 +90,115 @@ impl std::default::Default for Scope {
     }
 }
 
+#[derive(Debug)]
+struct AstParser<'a> {
+    ts: &'a [Token],
+    idents: &'a mut Scope,
+    start: &'a Location,
+    open_stack: Vec<usize>,
+    args: Vec<Var>,
+    loc: Option<Location>,
+}
+
+impl<'a> AstParser<'a> {
+    fn new(ts: &'a [Token], idents: &'a mut Scope, start: &'a Location) -> Self {
+        Self {
+            ts,
+            idents,
+            start,
+            loc: None,
+            open_stack: Vec::new(),
+            args: Vec::new(),
+        }
+    }
+
+    fn parse(mut self) -> Result<Statement, LispErrors> {
+        if self.ts.len() < 2 {
+            return Err(LispErrors::new().error(self.start, "Empty statements are not allowed!"));
+        }
+        let mut start_idx = 0;
+        if let TokenType::StartStmt = self.ts[start_idx].dat {
+            start_idx = 1;
+        }
+        let mut end_idx = self.ts.len() - 1;
+        if let TokenType::EndStmt = self.ts[end_idx].dat {
+            end_idx -= 1;
+        }
+        if start_idx > end_idx {
+            return Err(LispErrors::new().error(self.start, "Empty statements are not allowed!"));
+        }
+        for i in start_idx..=end_idx {
+            match &self.ts[i].dat {
+                TokenType::StartStmt => {
+                    self.open_stack.push(i);
+                }
+                TokenType::EndStmt => {
+                    if let Some(o) = self.open_stack.pop() {
+                        if self.open_stack.is_empty() {
+                            self.args.push(Var::new(make_ast(
+                                &self.ts[o..=i],
+                                &mut self.idents,
+                                &self.ts[o + 1].loc,
+                            )?));
+                        }
+                    } else {
+                        return Err(LispErrors::new()
+                            .error(&self.ts[i].loc, "Unmatched closing parentheses!")
+                            .note(None, "Delete it."));
+                    }
+                }
+                TokenType::KeyWord(_) => todo!(),
+                TokenType::Recognizable(n) => {
+                    if self.open_stack.is_empty() {
+                        self.args.push(Var::new(n.clone()));
+                    }
+                }
+                TokenType::Ident(id) => match self.idents.vars.get(&id.to_string()) {
+                    None => {
+                        return Err(LispErrors::new()
+                            .error(&self.ts[i].loc, format!("Unknown identifier `{id}`!")))
+                    }
+                    Some(s) => {
+                        if self.open_stack.is_empty() {
+                            self.args.push(s.new_ref());
+                            self.loc = Some(self.ts[i].loc.clone());
+                        }
+                    }
+                },
+            }
+        }
+        if !self.open_stack.is_empty() {
+            return Err(LispErrors::new()
+                .error(
+                    &self.ts[self.open_stack.pop().unwrap()].loc,
+                    "Unmatched opening parentheses!",
+                )
+                .note(None, "Deleting it might fix this error."));
+        }
+        let s = self.args.remove(0);
+        if let LispType::Func(_) = *s.get() {
+        } else {
+            // TODOO(#8): Making raw lists
+            return Err(LispErrors::new()
+                .error(&self.start, "Raw lists are not available (Yet...)!")
+                .note(None, "This is not a function.")
+                .note(None, "Use the `list` intrinsic to convert this to a list."));
+        }
+        Ok(Statement {
+            args: self.args,
+            op: s,
+            res: RefCell::new(None),
+            loc: self.loc.unwrap(),
+        })
+    }
+}
+
 pub(crate) fn make_ast(
     ts: &[Token],
-    idents: &Scope,
+    idents: &mut Scope,
     start: &Location,
 ) -> Result<Statement, LispErrors> {
     // TODOOOOOOOOOOO(#7): Declaring variables
-    let mut open_stack = Vec::new();
-    let mut args = Vec::new();
-    let mut loc = None;
-
-    let mut start_idx = 0;
-    if let TokenType::StartStmt = ts[start_idx].dat {
-        start_idx = 1;
-    }
-    let mut end_idx = ts.len() - 1;
-    if let TokenType::EndStmt = ts[end_idx].dat {
-        end_idx -= 1;
-    }
-    for i in start_idx..=end_idx {
-        match &ts[i].dat {
-            TokenType::StartStmt => {
-                open_stack.push(i);
-            }
-            TokenType::EndStmt => {
-                if let Some(o) = open_stack.pop() {
-                    if open_stack.is_empty() {
-                        args.push(Var::new(make_ast(&ts[o..=i], &idents, &ts[o + 1].loc)?));
-                    }
-                } else {
-                    return Err(LispErrors::new()
-                        .error(&ts[i].loc, "Unmatched closing parentheses!")
-                        .note(None, "Delete it."));
-                }
-            }
-            TokenType::KeyWord(k) => todo!(),
-            TokenType::Recognizable(n) => {
-                if open_stack.is_empty() {
-                    args.push(Var::new(n.clone()));
-                }
-            }
-            TokenType::Ident(id) => match idents.vars.get(&id.to_string()) {
-                None => {
-                    return Err(
-                        LispErrors::new().error(&ts[i].loc, format!("Unknown identifier `{id}`!"))
-                    )
-                }
-                Some(s) => {
-                    if open_stack.is_empty() {
-                        args.push(s.new_ref());
-                        loc = Some(ts[i].loc.clone());
-                    }
-                }
-            },
-        }
-    }
-    if !open_stack.is_empty() {
-        return Err(LispErrors::new()
-            .error(
-                &ts[open_stack.pop().unwrap()].loc,
-                "Unmatched opening parentheses!",
-            )
-            .note(None, "Deleting it might fix this error."));
-    }
-    if args.first().is_none() {
-        return Err(LispErrors::new().error(&start, "Empty statements are not allowed!"));
-    }
-    let s = args.remove(0);
-    if let LispType::Func(_) = *s.get() {
-    } else {
-        // TODOO(#8): Making raw lists
-        return Err(LispErrors::new()
-            .error(&start, "Raw lists are not available (Yet...)!")
-            .note(None, "Use the `list` intrinsic to convert this to a list."));
-    }
-    Ok(Statement {
-        args,
-        op: s,
-        res: RefCell::new(None),
-        loc: loc.unwrap(),
-    })
+    let ast_parser = AstParser::new(ts, idents, start);
+    ast_parser.parse()
 }

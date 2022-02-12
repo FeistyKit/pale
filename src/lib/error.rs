@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use crate::tokens::Location;
 
+#[derive(Debug)]
 pub struct LispErrors {
     errs: Vec<(String, Vec<String>)>,
 }
@@ -37,5 +38,8 @@ impl LispErrors {
             notes.push(msg);
         }
         self
+    }
+    pub fn extend(&mut self, other: Self) {
+        self.errs.extend(other.errs)
     }
 }
