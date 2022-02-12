@@ -204,19 +204,19 @@ impl<'a> Tokenizer<'a> {
     fn tokenize(mut self) -> Result<Vec<Token>, LispErrors> {
         'lines: for (line_number, line_data) in self.source.lines().enumerate() {
             for (col_number, character) in line_data.trim().char_indices() {
-                match (character, self.status) {
-                    ('\"', TokenizerStatus::String) => self.push_tok(),
-                    (_, TokenizerStatus::String) => self.token_buf.push(character),
-                    ('\"', TokenizerStatus::Normal) => self.status = TokenizerStatus::String,
-                    (' ', TokenizerStatus::Normal) => self.push_tok(),
-                    ('(', TokenizerStatus::Normal) => self.start_stmt(),
-                    (')', TokenizerStatus::Normal) => self.end_stmt(),
-                    ('#', TokenizerStatus::Normal) => continue 'lines,
-                    ('$', TokenizerStatus::Normal) => {
+                match (character, self.status, self.token_buf.as_ref()) {
+                    ('\"', TokenizerStatus::String, _) => self.push_tok(),
+                    (_, TokenizerStatus::String, _) => self.token_buf.push(character),
+                    ('\"', TokenizerStatus::Normal, _) => self.status = TokenizerStatus::String,
+                    (' ', TokenizerStatus::Normal, _) => self.push_tok(),
+                    ('(', TokenizerStatus::Normal, _) => self.start_stmt(),
+                    (')', TokenizerStatus::Normal, _) => self.end_stmt(),
+                    ('/', TokenizerStatus::Normal, "/") => continue 'lines,
+                    ('$', TokenizerStatus::Normal, _) => {
                         self.start_stmt();
                         self.right_assocs += 1;
                     }
-                    (_, TokenizerStatus::Normal) => self.token_buf.push(character),
+                    (_, TokenizerStatus::Normal, _) => self.token_buf.push(character),
                 }
                 if !self.pos_locked {
                     self.pos = (col_number, line_number);
