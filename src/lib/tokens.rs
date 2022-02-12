@@ -202,7 +202,7 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn tokenize(mut self) -> Result<Vec<Token>, LispErrors> {
-        for (line_number, line_data) in self.source.lines().enumerate() {
+        'lines: for (line_number, line_data) in self.source.lines().enumerate() {
             for (col_number, character) in line_data.trim().char_indices() {
                 match (character, self.status) {
                     ('\"', TokenizerStatus::String) => self.push_tok(),
@@ -211,6 +211,7 @@ impl<'a> Tokenizer<'a> {
                     (' ', TokenizerStatus::Normal) => self.push_tok(),
                     ('(', TokenizerStatus::Normal) => self.start_stmt(),
                     (')', TokenizerStatus::Normal) => self.end_stmt(),
+                    ('#', TokenizerStatus::Normal) => continue 'lines,
                     ('$', TokenizerStatus::Normal) => {
                         self.start_stmt();
                         self.right_assocs += 1;
