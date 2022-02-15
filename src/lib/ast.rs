@@ -1,3 +1,5 @@
+#![allow(clippy::or_fun_call)]
+
 use crate::callable::IntrinsicOp;
 use crate::error::LispErrors;
 use crate::tokens::{KeyWord, Token, TokenType};
@@ -154,7 +156,7 @@ impl<'a> AstParser<'a> {
         for tok in tokens {
             match (&tok.dat, &mut status) {
                 (TokenType::Ident(id), IdentParserStatus::Normal) => {
-                    to_introduce.push((&id, None, &tok.loc))
+                    to_introduce.push((id, None, &tok.loc))
                 }
                 (TokenType::StartStmt, IdentParserStatus::Normal) => {
                     status = IdentParserStatus::Specific {
@@ -185,7 +187,7 @@ impl<'a> AstParser<'a> {
                 ) => {
                     status = IdentParserStatus::Specific {
                         introducing_loc: l,
-                        ident: Some(&id),
+                        ident: Some(id),
                         has_value: false,
                     }
                 }
@@ -202,7 +204,7 @@ impl<'a> AstParser<'a> {
                             .error(&tok.loc, format!("Unknown identifier {id:?}!")))
                     }
                     Some(s) => {
-                        to_introduce.push((&new_id, Some(s.new_ref()), &tok.loc));
+                        to_introduce.push((new_id, Some(s.new_ref()), &tok.loc));
                         status = IdentParserStatus::Specific {
                             introducing_loc: l,
                             ident: Some(new_id),
@@ -230,7 +232,7 @@ impl<'a> AstParser<'a> {
                         has_value: _,
                     },
                 ) => {
-                    to_introduce.push((&id, Some(Var::new(value.clone())), &tok.loc));
+                    to_introduce.push((id, Some(Var::new(value.clone())), &tok.loc));
                     status = IdentParserStatus::Specific {
                         introducing_loc: l,
                         ident: Some(id),
@@ -350,7 +352,7 @@ impl<'a> AstParser<'a> {
                         if self.open_stack.is_empty() {
                             self.args.push(Var::new(make_ast(
                                 &self.ts[o..=i],
-                                &mut self.idents,
+                                self.idents,
                                 &self.ts[o + 1].loc,
                             )?));
                         }
@@ -370,20 +372,18 @@ impl<'a> AstParser<'a> {
                         self.args.push(Var::new(n.clone()));
                     }
                 }
-                (AstParserStatus::Normal, TokenType::Ident(id)) => {
-                    match self.idents.vars.get(&id.to_string()) {
-                        None => {
-                            return Err(LispErrors::new()
-                                .error(&self.ts[i].loc, format!("Unknown identifier `{id}`!")))
-                        }
-                        Some(s) => {
-                            if self.open_stack.is_empty() {
-                                self.args.push(s.new_ref());
-                                self.loc = Some(self.ts[i].loc.clone());
-                            }
+                (AstParserStatus::Normal, TokenType::Ident(id)) => match self.idents.vars.get(id) {
+                    None => {
+                        return Err(LispErrors::new()
+                            .error(&self.ts[i].loc, format!("Unknown identifier `{id}`!")))
+                    }
+                    Some(s) => {
+                        if self.open_stack.is_empty() {
+                            self.args.push(s.new_ref());
+                            self.loc = Some(self.ts[i].loc.clone());
                         }
                     }
-                }
+                },
                 (AstParserStatus::Identifiers(_, positions), TokenType::StartStmt) => {
                     positions.push(i)
                 }
@@ -411,7 +411,7 @@ impl<'a> AstParser<'a> {
         } else {
             // TODOO(#8): Making raw lists
             return Err(LispErrors::new()
-                .error(&self.start, "Raw lists are not available (Yet...)!")
+                .error(self.start, "Raw lists are not available (Yet...)!")
                 .note(None, "This is not a function.")
                 .note(None, "Use the `list` intrinsic to convert this to a list."));
         }

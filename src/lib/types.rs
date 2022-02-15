@@ -50,9 +50,9 @@ impl PartialEq for LispType {
 }
 
 impl LispType {
-    pub(crate) fn unwrap_func(&self) -> &Box<dyn Callable> {
+    pub(crate) fn unwrap_func(&self) -> &dyn Callable {
         match self {
-            LispType::Func(f) => &f,
+            LispType::Func(f) => f.as_ref(),
             _ => panic!("Expected to be LispType::Func but was actually {self}!"),
         }
     }

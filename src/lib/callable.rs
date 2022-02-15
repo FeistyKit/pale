@@ -6,7 +6,7 @@ use std::fmt::Debug;
 pub trait Callable: Debug {
     // TODO(#5): Decide whether to keep the return type of Callable::call as a trait object or an
     // associated type
-    fn call(&self, args: &Vec<Var>, loc_called: &Location) -> Result<Var, LispErrors>;
+    fn call(&self, args: &[Var], loc_called: &Location) -> Result<Var, LispErrors>;
 }
 
 #[derive(Debug)]
@@ -18,7 +18,7 @@ pub enum IntrinsicOp {
 }
 
 impl Callable for IntrinsicOp {
-    fn call(&self, args: &Vec<Var>, loc_called: &Location) -> Result<Var, LispErrors> {
+    fn call(&self, args: &[Var], loc_called: &Location) -> Result<Var, LispErrors> {
         match self {
             IntrinsicOp::Add => {
                 if args.len() < 2 {
@@ -54,7 +54,7 @@ impl Callable for IntrinsicOp {
                     return Err(LispErrors::new()
                         .error(loc_called, "Cannot multiply with non-integer type!"));
                 }
-                for a in args.into_iter().skip(1) {
+                for a in args.iter().skip(1) {
                     if let LispType::Integer(i) = *a.resolve()?.get() {
                         product *= i;
                     } else {
@@ -80,7 +80,7 @@ impl Callable for IntrinsicOp {
                         LispErrors::new().error(loc_called, "Cannot subtract from a non-integer!")
                     );
                 }
-                for a in args.into_iter().skip(1) {
+                for a in args.iter().skip(1) {
                     if let LispType::Integer(i) = *a.resolve()?.get() {
                         sum -= i;
                     } else {
@@ -94,9 +94,9 @@ impl Callable for IntrinsicOp {
             }
             IntrinsicOp::Print => {
                 if args.len() != 1 {
-                    return Err(LispErrors::new()
+                    Err(LispErrors::new()
                         .error(loc_called, "Print intrinsic requires only one argument!")
-                        .note(None, "Try wrapping this in a statement with `$`."));
+                        .note(None, "Try wrapping this in a statement with `$`."))
                 } else {
                     println!("{}", args[0]);
                     Ok(Var::new(0))

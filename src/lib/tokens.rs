@@ -160,7 +160,7 @@ impl<'a> Tokenizer<'a> {
 
     fn end_stmt(&mut self) {
         self.token_buf = self.token_buf.trim().to_string();
-        if &self.token_buf != "" {
+        if !self.token_buf.is_empty() {
             let tok = Token {
                 loc: Location {
                     filename: self.filename.clone(),
