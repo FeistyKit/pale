@@ -429,7 +429,6 @@ pub(crate) fn make_ast(
     idents: &mut Scope,
     start: &Location,
 ) -> Result<Statement, LispErrors> {
-    // TODOOOOOOOOOOO(#7): Declaring variables
     let ast_parser = AstParser::new(ts, idents, start);
     ast_parser.parse()
 }
