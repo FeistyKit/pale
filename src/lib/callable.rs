@@ -30,7 +30,6 @@ impl Callable for IntrinsicOp {
                     if let LispType::Integer(i) = *a.resolve()?.get() {
                         sum += i;
                     } else {
-                        // TODO(#4): Better error reporting in Statement::resolve with incorrect types
                         return Err(LispErrors::new().error(
                             loc_called,
                             format!("Incompatible types for addition: Integer and {}", a.get()),
