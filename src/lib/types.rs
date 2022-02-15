@@ -8,6 +8,7 @@ pub(crate) enum LispType {
     Str(String),
     Func(Box<dyn Callable>),
     Statement(Statement),
+    #[allow(dead_code)]
     List(Vec<Var>),
     Floating(f64),
     Nil,
