@@ -287,7 +287,7 @@ impl<'a> AstParser<'a> {
                            //     "You can express this as `(let {_id}) (set id <value>)`",
                            // )
                            // @set
-                           // TODOO: arbitrary values in `let` expressions
+                           // TODOO(#13): arbitrary values in `let` expressions
                     );
                 }
                 (
