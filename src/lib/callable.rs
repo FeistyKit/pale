@@ -4,8 +4,6 @@ use crate::Location;
 use crate::Var;
 use std::fmt::Debug;
 pub trait Callable: Debug {
-    // TODO(#5): Decide whether to keep the return type of Callable::call as a trait object or an
-    // associated type
     fn call(&self, args: &[Var], loc_called: &Location) -> Result<Var, LispErrors>;
 }
 
