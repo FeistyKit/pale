@@ -8,6 +8,7 @@ pub(crate) enum LispType {
     Str(String),
     Func(Box<dyn Callable>),
     Statement(Statement),
+    #[allow(dead_code)]
     List(Vec<Var>),
     Floating(f64),
     Nil,
@@ -49,9 +50,9 @@ impl PartialEq for LispType {
 }
 
 impl LispType {
-    pub(crate) fn unwrap_func(&self) -> &Box<dyn Callable> {
+    pub(crate) fn unwrap_func(&self) -> &dyn Callable {
         match self {
-            LispType::Func(f) => &f,
+            LispType::Func(f) => f.as_ref(),
             _ => panic!("Expected to be LispType::Func but was actually {self}!"),
         }
     }

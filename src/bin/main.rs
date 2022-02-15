@@ -1,3 +1,4 @@
+#![allow(clippy::or_fun_call)]
 use std::{env, process};
 use sul::{run_lisp, run_lisp_dumped};
 fn main() {

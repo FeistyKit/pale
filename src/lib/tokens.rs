@@ -1,5 +1,6 @@
 use std::fmt::Display;
 use std::mem;
+use std::str::FromStr;
 
 use crate::error::LispErrors;
 use crate::types::LispType;
@@ -22,25 +23,42 @@ impl Display for Location {
         write!(f, "{}:{}:{}", self.filename, self.line, self.col)
     }
 }
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub(crate) enum KeyWord {
+    Let,
+}
 
 #[derive(Debug, PartialEq, Clone)]
 pub(crate) enum TokenType {
     StartStmt,
     EndStmt,
+    KeyWord(KeyWord),
     Recognizable(LispType),
     Ident(String),
 }
 
+impl FromStr for KeyWord {
+    type Err = &'static str;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "let" => Ok(Self::Let),
+            _ => Err("Unknown keyword!"),
+        }
+    }
+}
+
 impl TokenType {
     fn new_str_lit(source: String) -> Self {
-        Self::Ident(source)
+        Self::Recognizable(LispType::Str(source))
     }
 }
 
 impl<T: ToString> From<T> for TokenType {
     fn from(orig: T) -> Self {
         let s = orig.to_string().trim().to_string();
-        if let Ok(i) = s.parse::<isize>() {
+        if let Ok(k) = s.parse::<KeyWord>() {
+            Self::KeyWord(k)
+        } else if let Ok(i) = s.parse::<isize>() {
             Self::Recognizable(i.into())
         } else if let Ok(f) = s.parse::<f64>() {
             Self::Recognizable(f.into())
@@ -142,7 +160,7 @@ impl<'a> Tokenizer<'a> {
 
     fn end_stmt(&mut self) {
         self.token_buf = self.token_buf.trim().to_string();
-        if &self.token_buf != "" {
+        if !self.token_buf.is_empty() {
             let tok = Token {
                 loc: Location {
                     filename: self.filename.clone(),
@@ -184,20 +202,21 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn tokenize(mut self) -> Result<Vec<Token>, LispErrors> {
-        for (line_number, line_data) in self.source.lines().enumerate() {
+        'lines: for (line_number, line_data) in self.source.lines().enumerate() {
             for (col_number, character) in line_data.trim().char_indices() {
-                match (character, self.status) {
-                    ('\"', TokenizerStatus::String) => self.push_tok(),
-                    (_, TokenizerStatus::String) => self.token_buf.push(character),
-                    ('\"', TokenizerStatus::Normal) => self.status = TokenizerStatus::String,
-                    (' ', TokenizerStatus::Normal) => self.push_tok(),
-                    ('(', TokenizerStatus::Normal) => self.start_stmt(),
-                    (')', TokenizerStatus::Normal) => self.end_stmt(),
-                    ('$', TokenizerStatus::Normal) => {
+                match (character, self.status, self.token_buf.as_ref()) {
+                    ('\"', TokenizerStatus::String, _) => self.push_tok(),
+                    (_, TokenizerStatus::String, _) => self.token_buf.push(character),
+                    ('\"', TokenizerStatus::Normal, _) => self.status = TokenizerStatus::String,
+                    (' ', TokenizerStatus::Normal, _) => self.push_tok(),
+                    ('(', TokenizerStatus::Normal, _) => self.start_stmt(),
+                    (')', TokenizerStatus::Normal, _) => self.end_stmt(),
+                    ('/', TokenizerStatus::Normal, "/") => continue 'lines,
+                    ('$', TokenizerStatus::Normal, _) => {
                         self.start_stmt();
                         self.right_assocs += 1;
                     }
-                    (_, TokenizerStatus::Normal) => self.token_buf.push(character),
+                    (_, TokenizerStatus::Normal, _) => self.token_buf.push(character),
                 }
                 if !self.pos_locked {
                     self.pos = (col_number, line_number);
