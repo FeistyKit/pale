@@ -141,7 +141,7 @@ impl<'a> AstParser<'a> {
         let value = value.unwrap_or(Var::new(LispType::Nil));
         let ident = ident.to_string();
         if self.idents.vars.contains_key(&ident) {
-            //TODO: Shadowing
+            //TODO(#12): Shadowing
             return Err(LispErrors::new()
                 .error(loc, "Shadowing is not currently allowed!")
                 .note(None, "Change its name."));
