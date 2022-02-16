@@ -74,6 +74,7 @@ impl<T: ToString> From<T> for TokenType {
 enum TokenizerStatus {
     String,
     Normal,
+    Comment,
 }
 
 #[derive(Debug)]
@@ -87,6 +88,7 @@ struct Tokenizer<'a> {
     default_buf_len: usize,
     filename: String,
     source: &'a str,
+    last_character: char,
 }
 
 impl<'a> Tokenizer<'a> {
@@ -103,6 +105,7 @@ impl<'a> Tokenizer<'a> {
             filename,
             source: input,
             right_assocs: 0,
+            last_character: ' ',
         }
     }
 
@@ -126,7 +129,7 @@ impl<'a> Tokenizer<'a> {
                     self.pos_locked = false;
                 }
             }
-
+            TokenizerStatus::Comment(_) => unreachable!(),
             TokenizerStatus::String => {
                 let tok = Token {
                     loc: Location {
@@ -204,20 +207,24 @@ impl<'a> Tokenizer<'a> {
     fn tokenize(mut self) -> Result<Vec<Token>, LispErrors> {
         'lines: for (line_number, line_data) in self.source.lines().enumerate() {
             for (col_number, character) in line_data.trim().char_indices() {
-                match (character, self.status, self.token_buf.as_ref()) {
+                match (character, self.status, self.last_character) {
                     ('\"', TokenizerStatus::String, _) => self.push_tok(),
                     (_, TokenizerStatus::String, _) => self.token_buf.push(character),
                     ('\"', TokenizerStatus::Normal, _) => self.status = TokenizerStatus::String,
                     (' ', TokenizerStatus::Normal, _) => self.push_tok(),
                     ('(', TokenizerStatus::Normal, _) => self.start_stmt(),
                     (')', TokenizerStatus::Normal, _) => self.end_stmt(),
-                    ('/', TokenizerStatus::Normal, "/") => continue 'lines,
+                    ('/', TokenizerStatus::Normal, '/') => continue 'lines,
                     ('$', TokenizerStatus::Normal, _) => {
                         self.start_stmt();
                         self.right_assocs += 1;
                     }
                     (_, TokenizerStatus::Normal, _) => self.token_buf.push(character),
+                    ('*', TokenizerStatus::Normal, '{') => self.status = TokenizerStatus::Comment,
+                    ('}', TokenizerStatus::Comment, '*') => self.status = TokenizerStatus::Normal,
+                    (_, TokenizerStatus::Comment, _) => {}
                 }
+                self.last_character = character;
                 if !self.pos_locked {
                     self.pos = (col_number, line_number);
                 }
