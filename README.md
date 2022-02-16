@@ -1,6 +1,6 @@
 # Perhaps Another Lisp Engine
 
-Pale is a homemade, interpreted lisp, written in Rust. I wrote it mostly to figure out how languages work. I've purposely avoided any content concerning the writing of programming languages, with the exception of [tsoding's excellent series on porth](https://www.youtube.com/watch?v=8QP2fDBIxjM&list=PLpM-Dvs8t0VbMZA7wW9aR3EtBqe2kinu4). The lexing and parsing stages are entirely homemade, using nothing beyond [the rust standard library](https://doc.rust-lang.org/std/). 
+Pale is a homemade, interpreted lisp, written in Rust. I wrote it mostly to figure out how languages work. I've purposely avoided any content concerning the writing of programming languages, with the exception of [tsoding's excellent series on porth](https://www.youtube.com/watch?v=8QP2fDBIxjM&list=PLpM-Dvs8t0VbMZA7wW9aR3EtBqe2kinu4), which actually inspired me to make this language. The lexing and parsing stages are entirely homemade, using nothing beyond [the rust standard library](https://doc.rust-lang.org/std/). 
 
 Pale isn't meant to be a true production-ready language. It's meant to be used for very small scripts where a small amount of logic is needed, especially in an isolated environment (e.g. a Discord bot). Another factor of its design is that I want it to be easily used to allow users to define logic, but you ultimately get full control over what they can or can't do. 
 
@@ -29,4 +29,4 @@ $ cargo run
 Requires [rust](https://rustup.rs/) installed.
 
 ## Documentation
-Pale documentation is coming soon!
+Documentation can be found in the [doc folder](./doc).
