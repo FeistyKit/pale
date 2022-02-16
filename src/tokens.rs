@@ -129,7 +129,7 @@ impl<'a> Tokenizer<'a> {
                     self.pos_locked = false;
                 }
             }
-            TokenizerStatus::Comment(_) => unreachable!(),
+            TokenizerStatus::Comment => unreachable!(),
             TokenizerStatus::String => {
                 let tok = Token {
                     loc: Location {
