@@ -1,5 +1,5 @@
 [package]
-name = "sul"
+name = "pale"
 version = "0.1.0"
 edition = "2021"
 
@@ -12,5 +12,5 @@ path = "src/lib/lib.rs"
 test = true
 
 [[bin]]
-name = "sul"
+name = "pale"
 path = "src/bin/main.rs"

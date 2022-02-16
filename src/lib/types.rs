@@ -20,9 +20,9 @@ impl Clone for LispType {
         match self {
             Self::Integer(item) => Self::Integer(item.clone()),
             Self::Str(item) => Self::Str(item.clone()),
-            Self::Func(_) => panic!("Tried to clone a function! If you see this, this is an internal error and you should report it at <https://github.com/FeistyKit/sul/issues/new>!"),
-            Self::Statement(_) => panic!("Tried to clone a statement! If you see this, this is an internal error and you should report it at <https://github.com/FeistyKit/sul/issues/new>!"),
-            Self::List(_) => panic!("Tried to clone a list! If you see this, this is an internal error and you should report it at <https://github.com/FeistyKit/sul/issues/new>!"),
+            Self::Func(_) => panic!("Tried to clone a function! If you see this, this is an internal error and you should report it at <https://github.com/FeistyKit/pale/issues/new>!"),
+            Self::Statement(_) => panic!("Tried to clone a statement! If you see this, this is an internal error and you should report it at <https://github.com/FeistyKit/pale/issues/new>!"),
+            Self::List(_) => panic!("Tried to clone a list! If you see this, this is an internal error and you should report it at <https://github.com/FeistyKit/pale/issues/new>!"),
             Self::Floating(item) => Self::Floating(item.clone()),
             Self::Nil => Self::Nil,
         }
