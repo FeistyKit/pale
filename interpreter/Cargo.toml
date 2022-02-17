@@ -9,3 +9,7 @@ author = "FeistyKit <eeveebeevee33@gmail.com"
 [dependencies]
 pale = { path = "./..", features = ["debug"] }
 clap = {version = "~3", features = ["derive"] }
+
+[[bin]]
+name = "pale"
+path = "src/main.rs"
