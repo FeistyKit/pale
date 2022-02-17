@@ -22,7 +22,8 @@ pale = { git = "https://www.github.com/FeistyKit/pale" }
 ```bash
 $ git clone https://www.github.com/FeistyKit/pale.git
 $ cd pale
-$ cargo run
+$ make
+$ ./pale "(print \"Hello, World!\")"
 ```
 
 ## Requirements
