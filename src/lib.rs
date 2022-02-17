@@ -23,6 +23,7 @@ pub fn run_lisp(source: &str, file: &str) -> Result<String, LispErrors> {
     Ok(format!("{}", ast.resolve()?))
 }
 
+#[cfg(feature = "debug")]
 pub fn run_lisp_dumped(source: &str, file: &str) -> Result<String, LispErrors> {
     let toks = tokenize(source, file.to_string())?;
     println!("Tokens = {toks:#?}");
