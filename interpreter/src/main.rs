@@ -10,7 +10,7 @@ struct Args {
     is_command: bool,
 
     #[clap(short, long)]
-    debug: bool,
+    info_not_dumped: bool,
 
     input: Option<String>,
 }
@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn error::Error>> {
             return Err("Running in REPL mode is not yet implemented!".into());
         }
     };
-    if args.debug {
+    if !args.info_not_dumped {
         run_lisp(&source, &file)?;
     } else {
         run_lisp_dumped(&source, &file)?;
