@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{error::Error, fmt::Display};
 
 use crate::tokens::Location;
 
@@ -18,6 +18,8 @@ impl Display for LispErrors {
         Ok(())
     }
 }
+
+impl Error for LispErrors {}
 
 impl LispErrors {
     pub fn new() -> Self {

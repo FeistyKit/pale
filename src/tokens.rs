@@ -219,8 +219,8 @@ impl<'a> Tokenizer<'a> {
                         self.start_stmt();
                         self.right_assocs += 1;
                     }
-                    (_, TokenizerStatus::Normal, _) => self.token_buf.push(character),
                     ('*', TokenizerStatus::Normal, '{') => self.status = TokenizerStatus::Comment,
+                    (_, TokenizerStatus::Normal, _) => self.token_buf.push(character),
                     ('}', TokenizerStatus::Comment, '*') => self.status = TokenizerStatus::Normal,
                     (_, TokenizerStatus::Comment, _) => {}
                 }

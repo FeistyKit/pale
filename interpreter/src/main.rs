@@ -1,19 +1,41 @@
 #![allow(clippy::or_fun_call)]
+use clap::Parser;
 use pale::{run_lisp, run_lisp_dumped};
-use std::{env, process};
-fn main() {
-    let source = env::args().nth(1).unwrap_or("(+ 34 35)".to_string());
-    if env::args().any(|v| v.to_lowercase() == "--dump" || v.to_lowercase() == "-d") {
-        let res = run_lisp_dumped(&source, "<provided>");
-        if let Err(e) = res {
-            println!("An error occurred: {e}");
-            process::exit(1);
+use std::{error, fs};
+
+#[derive(Parser, Debug)]
+#[clap(author, version, about)]
+struct Args {
+    #[clap(short = 'c', long = "command")]
+    is_command: bool,
+
+    #[clap(short, long)]
+    debug: bool,
+
+    input: Option<String>,
+}
+
+fn main() -> Result<(), Box<dyn error::Error>> {
+    let args = Args::parse();
+    let (source, file) = if args.is_command {
+        if let Some(s) = args.input {
+            (s, "<provided>".to_string())
+        } else {
+            return Err("A command must be provided!".into());
         }
     } else {
-        let res = run_lisp(&source, "<provided>");
-        if let Err(e) = res {
-            println!("An error occurred: {e}");
-            process::exit(1);
+        if let Some(s) = args.input {
+            (fs::read_to_string(&s).unwrap(), s)
+        } else {
+            // TODOOOOO: Running the interpreter off standard input.
+            return Err("Running in REPL mode is not yet implemented!".into());
         }
+    };
+    if !args.debug {
+        // Clap makes it true by default
+        run_lisp(&source, &file)?;
+    } else {
+        run_lisp_dumped(&source, &file)?;
     }
+    Ok(())
 }
