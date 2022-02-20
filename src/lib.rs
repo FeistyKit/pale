@@ -6,6 +6,7 @@ use crate::tokens::{tokenize, Location};
 mod ast;
 mod callable;
 mod error;
+mod identifiers;
 mod tokens;
 mod types;
 
