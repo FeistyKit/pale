@@ -56,6 +56,20 @@ impl LispType {
             _ => panic!("Expected to be LispType::Func but was actually {self}!"),
         }
     }
+
+    pub(crate) fn is_func(&self) -> bool {
+        match self {
+            LispType::Func(_) => true,
+            _ => false,
+        }
+    }
+
+    pub(crate) fn is_stmt(&self) -> bool {
+        match self {
+            LispType::Statement(_) => true,
+            _ => false,
+        }
+    }
 }
 
 impl Display for LispType {

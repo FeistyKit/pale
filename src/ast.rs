@@ -244,20 +244,36 @@ impl<'a> AstParser<'a> {
                 .note(None, "Deleting it might fix this error."));
         }
         let s = self.args.remove(0);
-        if let LispType::Func(_) = *s.get() {
+        if s.get().is_func() {
+            Ok(Statement {
+                args: self.args,
+                op: s,
+                res: RefCell::new(None),
+                loc: self.loc.unwrap(),
+            })
+        } else if self.args.is_empty() {
+            if s.get().is_stmt() {
+                let s = s.unwrap();
+                match s {
+                    LispType::Statement(s) => Ok(s),
+                    _ => Err(LispErrors::new()
+                        .error(self.start, "Raw lists are not available (Yet...)!")
+                        .note(None, "This is not a function.")
+                        .note(None, "Use the `list` intrinsic to convert this to a list.")),
+                }
+            } else {
+                Err(LispErrors::new()
+                    .error(self.start, "Raw lists are not available (Yet...)!")
+                    .note(None, "This is not a function.")
+                    .note(None, "Use the `list` intrinsic to convert this to a list."))
+            }
         } else {
             // TODOO(#8): Making raw lists
-            return Err(LispErrors::new()
+            Err(LispErrors::new()
                 .error(self.start, "Raw lists are not available (Yet...)!")
                 .note(None, "This is not a function.")
-                .note(None, "Use the `list` intrinsic to convert this to a list."));
+                .note(None, "Use the `list` intrinsic to convert this to a list."))
         }
-        Ok(Statement {
-            args: self.args,
-            op: s,
-            res: RefCell::new(None),
-            loc: self.loc.unwrap(),
-        })
     }
 }
 
