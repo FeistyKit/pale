@@ -1,8 +1,7 @@
 use crate::ast::{Statement, Var};
 use crate::callable::Callable;
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 
-#[derive(Debug)]
 pub(crate) enum LispType {
     Integer(isize),
     Str(String),
@@ -12,7 +11,26 @@ pub(crate) enum LispType {
     List(Vec<Var>),
     Floating(f64),
     Nil,
-    // TODO(#2): Add custom newtypes.
+    //FIXME: Having a variable inside a lisptype is a hack that is required for the current implementation of lisp functions, but it's not good.
+    Var(Var), // TODO(#2): Add custom newtypes.
+}
+
+impl Debug for LispType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Integer(arg0) => f.debug_tuple("Integer").field(arg0).finish(),
+            Self::Str(arg0) => f.debug_tuple("Str").field(arg0).finish(),
+            Self::Func(func) => f
+                .debug_tuple("Func")
+                .field(&func.maybe_debug_info().unwrap_or("<function>".into()))
+                .finish(),
+            Self::Statement(arg0) => f.debug_tuple("Statement").field(arg0).finish(),
+            Self::List(arg0) => f.debug_tuple("List").field(arg0).finish(),
+            Self::Floating(arg0) => f.debug_tuple("Floating").field(arg0).finish(),
+            Self::Nil => write!(f, "Nil"),
+            Self::Var(v) => write!(f, "{:?}", v),
+        }
+    }
 }
 
 impl Clone for LispType {
@@ -22,9 +40,10 @@ impl Clone for LispType {
             Self::Str(item) => Self::Str(item.clone()),
             Self::Func(_) => panic!("Tried to clone a function! If you see this, this is an internal error and you should report it at <https://github.com/FeistyKit/pale/issues/new>!"),
             Self::Statement(_) => panic!("Tried to clone a statement! If you see this, this is an internal error and you should report it at <https://github.com/FeistyKit/pale/issues/new>!"),
-            Self::List(_) => panic!("Tried to clone a list! If you see this, this is an internal error and you should report it at <https://github.com/FeistyKit/pale/issues/new>!"),
+            Self::List(l) => Self::List(l.iter().map(Var::maybe_clone).collect()),
             Self::Floating(item) => Self::Floating(item.clone()),
             Self::Nil => Self::Nil,
+            Self::Var(v) => Self::Var(v.maybe_clone())
         }
     }
 }
@@ -91,7 +110,14 @@ impl Display for LispType {
             }
             LispType::Floating(fl) => write!(f, "{fl}"),
             LispType::Nil => write!(f, "nil"),
+            LispType::Var(v) => write!(f, "{v}"),
         }
+    }
+}
+
+impl From<Box<dyn Callable>> for LispType {
+    fn from(other: Box<dyn Callable>) -> Self {
+        LispType::Func(other)
     }
 }
 

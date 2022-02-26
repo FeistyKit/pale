@@ -44,6 +44,19 @@ impl Statement {
 
 #[allow(dead_code)]
 impl Var {
+    pub(crate) fn maybe_clone(&self) -> Self {
+        match &*self.dat.borrow() {
+            LispType::Func(f) => match f.try_clone() {
+                Some(f) => Var::new(f),
+                None => self.new_ref(),
+            },
+            LispType::Statement(_) => {
+                unimplemented!()
+            }
+            _ => Var::new(self.dat.borrow().clone()),
+        }
+    }
+
     pub(crate) fn new<T: Into<LispType>>(i: T) -> Var {
         Var {
             dat: Rc::new(RefCell::new(i.into())),
@@ -188,6 +201,7 @@ impl<'a> AstParser<'a> {
                     KeyWord::Let => {
                         self.status = AstParserStatus::Identifiers(i, Vec::new());
                     }
+                    KeyWord::Lambda => unimplemented!(),
                 },
                 (AstParserStatus::Normal, TokenType::Recognizable(n)) => {
                     if self.open_stack.is_empty() {

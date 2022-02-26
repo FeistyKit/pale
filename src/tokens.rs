@@ -23,9 +23,11 @@ impl Display for Location {
         write!(f, "{}:{}:{}", self.filename, self.line, self.col)
     }
 }
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) enum KeyWord {
     Let,
+    Lambda,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -42,6 +44,7 @@ impl FromStr for KeyWord {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.trim().to_ascii_lowercase().as_str() {
             "let" => Ok(Self::Let),
+            "lambda" => Ok(Self::Lambda),
             _ => Err("Unknown keyword!"),
         }
     }

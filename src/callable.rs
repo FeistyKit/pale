@@ -1,10 +1,64 @@
+use crate::ast::Statement;
 use crate::error::LispErrors;
 use crate::types::LispType;
 use crate::Location;
 use crate::Var;
 use std::fmt::Debug;
-pub trait Callable: Debug {
+
+pub trait Callable {
     fn call(&self, args: &[Var], loc_called: &Location) -> Result<Var, LispErrors>;
+    fn try_clone(&self) -> Option<Box<dyn Callable>> {
+        None
+    }
+    fn maybe_debug_info(&self) -> Option<String> {
+        None
+    }
+}
+
+impl<T: Clone + 'static + Fn(&[Var], &Location) -> Result<Var, LispErrors>> Callable for T {
+    fn call(&self, args: &[Var], loc: &Location) -> Result<Var, LispErrors> {
+        self(args, loc)
+    }
+    fn try_clone(&self) -> Option<Box<dyn Callable>> {
+        Some(Box::new(self.clone()) as Box<dyn Callable>)
+    }
+}
+
+// TODO: Automatically implement Callable for types that don't support Clone.
+//
+//
+// impl<T: !Clone + Fn(&[Var], &Location) -> Result<Var, LispErrors>> Callable for T {
+//     fn call(&self, args: &[Var], loc: &Location) -> Result<Var, LispErrors> {
+//         self(args, loc)
+//     }
+// }
+
+#[derive(Debug)]
+pub(crate) struct Function {
+    vars: Vec<Var>, // The statement depends upon the vars
+    dat: Statement,
+}
+
+impl Callable for Function {
+    fn call(&self, args: &[Var], loc_called: &Location) -> Result<Var, LispErrors> {
+        if args.len() < self.vars.len() {
+            return Err(LispErrors::new().error(loc_called, "Insufficient arguments provided!"));
+        } else if args.len() > self.vars.len() {
+            return Err(LispErrors::new()
+                .error(loc_called, "Too many arguments provided!")
+                .note(loc_called, "Delete them"));
+        }
+        for (arg, var) in args.iter().zip(self.vars.iter()) {
+            *var.get_mut() = LispType::Var(arg.maybe_clone())
+        }
+        self.dat.resolve()
+    }
+}
+
+impl Function {
+    pub(crate) fn new(vars: Vec<Var>, dat: Statement) -> Self {
+        Function { vars, dat }
+    }
 }
 
 #[derive(Debug)]
