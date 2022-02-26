@@ -1,6 +1,6 @@
 use crate::ast::Statement;
 use crate::error::LispErrors;
-use crate::types::LispType;
+use crate::types::LispValue;
 use crate::Location;
 use crate::Var;
 use std::fmt::Debug;
@@ -49,7 +49,7 @@ impl Callable for Function {
                 .note(loc_called, "Delete them"));
         }
         for (arg, var) in args.iter().zip(self.vars.iter()) {
-            *var.get_mut() = LispType::Var(arg.maybe_clone())
+            *var.get_mut() = LispValue::Var(arg.maybe_clone())
         }
         self.dat.resolve()
     }
@@ -79,7 +79,7 @@ impl Callable for IntrinsicOp {
                 // TODO(#11): Addition of floats and integers.
                 let mut sum = 0;
                 for a in args {
-                    if let LispType::Integer(i) = *a.resolve()?.get() {
+                    if let LispValue::Integer(i) = *a.resolve()?.get() {
                         sum += i;
                     } else {
                         return Err(LispErrors::new().error(
@@ -99,14 +99,14 @@ impl Callable for IntrinsicOp {
                 }
                 let mut product;
                 let t = args.get(0).unwrap();
-                if let LispType::Integer(i) = *t.resolve()?.get() {
+                if let LispValue::Integer(i) = *t.resolve()?.get() {
                     product = i
                 } else {
                     return Err(LispErrors::new()
                         .error(loc_called, "Cannot multiply with non-integer type!"));
                 }
                 for a in args.iter().skip(1) {
-                    if let LispType::Integer(i) = *a.resolve()?.get() {
+                    if let LispValue::Integer(i) = *a.resolve()?.get() {
                         product *= i;
                     } else {
                         return Err(LispErrors::new()
@@ -124,7 +124,7 @@ impl Callable for IntrinsicOp {
                 }
                 let mut sum;
                 let t = args.get(0).unwrap();
-                if let LispType::Integer(i) = *t.resolve()?.get() {
+                if let LispValue::Integer(i) = *t.resolve()?.get() {
                     sum = i
                 } else {
                     return Err(
@@ -132,7 +132,7 @@ impl Callable for IntrinsicOp {
                     );
                 }
                 for a in args.iter().skip(1) {
-                    if let LispType::Integer(i) = *a.resolve()?.get() {
+                    if let LispValue::Integer(i) = *a.resolve()?.get() {
                         sum -= i;
                     } else {
                         return Err(LispErrors::new().error(

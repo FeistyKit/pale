@@ -3,7 +3,7 @@ use std::mem;
 use std::str::FromStr;
 
 use crate::error::LispErrors;
-use crate::types::LispType;
+use crate::types::LispValue;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Token {
@@ -35,7 +35,7 @@ pub(crate) enum TokenType {
     StartStmt,
     EndStmt,
     KeyWord(KeyWord),
-    Recognizable(LispType),
+    Recognizable(LispValue),
     Ident(String),
 }
 
@@ -52,7 +52,7 @@ impl FromStr for KeyWord {
 
 impl TokenType {
     fn new_str_lit(source: String) -> Self {
-        Self::Recognizable(LispType::Str(source))
+        Self::Recognizable(LispValue::Str(source))
     }
 }
 
@@ -66,7 +66,7 @@ impl<T: ToString> From<T> for TokenType {
         } else if let Ok(f) = s.parse::<f64>() {
             Self::Recognizable(f.into())
         } else if &s == "nil" {
-            Self::Recognizable(LispType::Nil)
+            Self::Recognizable(LispValue::Nil)
         } else {
             Self::Ident(orig.to_string())
         }

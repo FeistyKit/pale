@@ -48,7 +48,7 @@ mod tests {
     use crate::{
         run_lisp, tokenize,
         tokens::{Location, Token, TokenType},
-        types::LispType,
+        types::LispValue,
     };
     #[test]
     fn test_tokenizer() {
@@ -91,7 +91,7 @@ mod tests {
                     line: 0,
                     col: 6,
                 },
-                dat: TokenType::Recognizable(LispType::Integer(1)),
+                dat: TokenType::Recognizable(LispValue::Integer(1)),
             },
             Token {
                 loc: Location {
@@ -99,7 +99,7 @@ mod tests {
                     line: 0,
                     col: 8,
                 },
-                dat: TokenType::Recognizable(LispType::Integer(23)),
+                dat: TokenType::Recognizable(LispValue::Integer(23)),
             },
             Token {
                 loc: Location {
@@ -107,7 +107,7 @@ mod tests {
                     line: 0,
                     col: 11,
                 },
-                dat: TokenType::Recognizable(LispType::Integer(23423423)),
+                dat: TokenType::Recognizable(LispValue::Integer(23423423)),
             },
             Token {
                 loc: Location {
@@ -144,7 +144,7 @@ mod tests {
         let source = "(+ 34 (+ 34 1))";
         assert_eq!(
             *run_lisp(source, "<provided>").unwrap().get(),
-            LispType::Integer(69)
+            LispValue::Integer(69)
         );
     }
 }

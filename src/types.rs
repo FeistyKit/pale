@@ -2,7 +2,7 @@ use crate::ast::{Statement, Var};
 use crate::callable::Callable;
 use std::fmt::{Debug, Display};
 
-pub(crate) enum LispType {
+pub(crate) enum LispValue {
     Integer(isize),
     Str(String),
     Func(Box<dyn Callable>),
@@ -15,7 +15,7 @@ pub(crate) enum LispType {
     Var(Var), // TODO(#2): Add custom newtypes.
 }
 
-impl Debug for LispType {
+impl Debug for LispValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Integer(arg0) => f.debug_tuple("Integer").field(arg0).finish(),
@@ -33,7 +33,7 @@ impl Debug for LispType {
     }
 }
 
-impl Clone for LispType {
+impl Clone for LispValue {
     fn clone(&self) -> Self {
         match self {
             Self::Integer(item) => Self::Integer(item.clone()),
@@ -50,104 +50,104 @@ impl Clone for LispType {
 
 const FLOATING_EQ_RANGE: f64 = 0.001; // If two floats are less than this far apart, they are considered equal
 
-impl PartialEq for LispType {
+impl PartialEq for LispValue {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (&LispType::Integer(lhs), &LispType::Integer(rhs)) => lhs == rhs,
-            (LispType::Str(lhs), LispType::Str(rhs)) => lhs == rhs,
-            (LispType::Statement(lhs), LispType::Statement(rhs)) => lhs == rhs,
-            (LispType::Func(_), LispType::Func(_)) => false,
-            (LispType::Nil, LispType::Nil) => true,
-            (LispType::Floating(lhs), LispType::Floating(rhs)) => {
+            (&LispValue::Integer(lhs), &LispValue::Integer(rhs)) => lhs == rhs,
+            (LispValue::Str(lhs), LispValue::Str(rhs)) => lhs == rhs,
+            (LispValue::Statement(lhs), LispValue::Statement(rhs)) => lhs == rhs,
+            (LispValue::Func(_), LispValue::Func(_)) => false,
+            (LispValue::Nil, LispValue::Nil) => true,
+            (LispValue::Floating(lhs), LispValue::Floating(rhs)) => {
                 (lhs - rhs).abs() < FLOATING_EQ_RANGE
             }
-            (LispType::List(lhs), LispType::List(rhs)) => lhs == rhs,
+            (LispValue::List(lhs), LispValue::List(rhs)) => lhs == rhs,
             // TODOO(#10): Comparing floats and integers
             _ => false,
         }
     }
 }
 
-impl LispType {
+impl LispValue {
     pub(crate) fn unwrap_func(&self) -> &dyn Callable {
         match self {
-            LispType::Func(f) => f.as_ref(),
+            LispValue::Func(f) => f.as_ref(),
             _ => panic!("Expected to be LispType::Func but was actually {self}!"),
         }
     }
 
     pub(crate) fn is_func(&self) -> bool {
         match self {
-            LispType::Func(_) => true,
+            LispValue::Func(_) => true,
             _ => false,
         }
     }
 
     pub(crate) fn is_stmt(&self) -> bool {
         match self {
-            LispType::Statement(_) => true,
+            LispValue::Statement(_) => true,
             _ => false,
         }
     }
 }
 
-impl Display for LispType {
+impl Display for LispValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            LispType::Integer(i) => write!(f, "{i}"),
-            LispType::Str(s) => write!(f, "{s}"),
-            LispType::Func(_) => write!(f, "<Function>"),
-            LispType::Statement(s) => match s.resolve() {
+            LispValue::Integer(i) => write!(f, "{i}"),
+            LispValue::Str(s) => write!(f, "{s}"),
+            LispValue::Func(_) => write!(f, "<Function>"),
+            LispValue::Statement(s) => match s.resolve() {
                 Ok(s) => write!(f, "{s}"),
                 Err(e) => write!(f, "{e}"),
             },
-            LispType::List(l) => {
+            LispValue::List(l) => {
                 let mut t = String::new();
                 for item in l {
                     t = format!("{t} {item}");
                 }
                 write!(f, "({t})")
             }
-            LispType::Floating(fl) => write!(f, "{fl}"),
-            LispType::Nil => write!(f, "nil"),
-            LispType::Var(v) => write!(f, "{v}"),
+            LispValue::Floating(fl) => write!(f, "{fl}"),
+            LispValue::Nil => write!(f, "nil"),
+            LispValue::Var(v) => write!(f, "{v}"),
         }
     }
 }
 
-impl From<Box<dyn Callable>> for LispType {
+impl From<Box<dyn Callable>> for LispValue {
     fn from(other: Box<dyn Callable>) -> Self {
-        LispType::Func(other)
+        LispValue::Func(other)
     }
 }
 
-impl From<isize> for LispType {
+impl From<isize> for LispValue {
     fn from(i: isize) -> Self {
-        LispType::Integer(i)
+        LispValue::Integer(i)
     }
 }
-impl From<String> for LispType {
+impl From<String> for LispValue {
     fn from(i: String) -> Self {
-        LispType::Str(i)
+        LispValue::Str(i)
     }
 }
-impl From<&str> for LispType {
+impl From<&str> for LispValue {
     fn from(i: &str) -> Self {
-        LispType::Str(i.to_string())
+        LispValue::Str(i.to_string())
     }
 }
-impl<T: Callable + 'static> From<T> for LispType {
+impl<T: Callable + 'static> From<T> for LispValue {
     fn from(i: T) -> Self {
-        LispType::Func(Box::new(i))
+        LispValue::Func(Box::new(i))
     }
 }
-impl From<Statement> for LispType {
+impl From<Statement> for LispValue {
     fn from(i: Statement) -> Self {
-        LispType::Statement(i)
+        LispValue::Statement(i)
     }
 }
-impl From<f64> for LispType {
+impl From<f64> for LispValue {
     fn from(i: f64) -> Self {
-        LispType::Floating(i)
+        LispValue::Floating(i)
     }
 }

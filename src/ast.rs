@@ -4,7 +4,7 @@ use crate::callable::IntrinsicOp;
 use crate::error::LispErrors;
 use crate::identifiers::{process_identifiers, Either, Identifier};
 use crate::tokens::{KeyWord, Token, TokenType};
-use crate::types::LispType;
+use crate::types::LispValue;
 use crate::Location;
 use std::{
     cell::{Ref, RefCell, RefMut},
@@ -15,7 +15,7 @@ use std::{
 
 #[derive(Debug, PartialEq)]
 pub struct Var {
-    pub(crate) dat: Rc<RefCell<LispType>>,
+    pub(crate) dat: Rc<RefCell<LispValue>>,
 }
 
 impl Display for Var {
@@ -46,18 +46,18 @@ impl Statement {
 impl Var {
     pub(crate) fn maybe_clone(&self) -> Self {
         match &*self.dat.borrow() {
-            LispType::Func(f) => match f.try_clone() {
+            LispValue::Func(f) => match f.try_clone() {
                 Some(f) => Var::new(f),
                 None => self.new_ref(),
             },
-            LispType::Statement(_) => {
+            LispValue::Statement(_) => {
                 unimplemented!()
             }
             _ => Var::new(self.dat.borrow().clone()),
         }
     }
 
-    pub(crate) fn new<T: Into<LispType>>(i: T) -> Var {
+    pub(crate) fn new<T: Into<LispValue>>(i: T) -> Var {
         Var {
             dat: Rc::new(RefCell::new(i.into())),
         }
@@ -66,7 +66,7 @@ impl Var {
     #[inline(always)]
     pub(crate) fn new_nil() -> Var {
         Var {
-            dat: Rc::new(RefCell::new(LispType::Nil)),
+            dat: Rc::new(RefCell::new(LispValue::Nil)),
         }
     }
 
@@ -75,19 +75,19 @@ impl Var {
             dat: Rc::clone(&self.dat),
         }
     }
-    pub(crate) fn get(&self) -> Ref<LispType> {
+    pub(crate) fn get(&self) -> Ref<LispValue> {
         self.dat.borrow()
     }
-    pub(crate) fn get_mut(&self) -> RefMut<LispType> {
+    pub(crate) fn get_mut(&self) -> RefMut<LispValue> {
         self.dat.borrow_mut()
     }
     pub(crate) fn resolve(&self) -> Result<Self, LispErrors> {
         match &*self.dat.borrow() {
-            LispType::Statement(s) => s.resolve(),
+            LispValue::Statement(s) => s.resolve(),
             _ => Ok(self.new_ref()),
         }
     }
-    pub(crate) fn unwrap(self) -> LispType {
+    pub(crate) fn unwrap(self) -> LispValue {
         Rc::try_unwrap(self.dat).unwrap().into_inner()
     }
 }
@@ -150,7 +150,7 @@ impl<'a> AstParser<'a> {
         value: Option<Var>,
         loc: &Location,
     ) -> Result<(), LispErrors> {
-        let value = value.unwrap_or(Var::new(LispType::Nil));
+        let value = value.unwrap_or(Var::new(LispValue::Nil));
         let ident = ident.to_string();
         if self.idents.vars.contains_key(&ident) {
             //TODO(#12): Shadowing
@@ -269,7 +269,7 @@ impl<'a> AstParser<'a> {
             if s.get().is_stmt() {
                 let s = s.unwrap();
                 match s {
-                    LispType::Statement(s) => Ok(s),
+                    LispValue::Statement(s) => Ok(s),
                     _ => Err(LispErrors::new()
                         .error(self.start, "Raw lists are not available (Yet...)!")
                         .note(None, "This is not a function.")
