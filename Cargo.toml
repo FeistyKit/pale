@@ -14,3 +14,7 @@ test = true
 
 [features]
 debug = []
+
+[[bin]]
+name = "pale"
+path = "src/main.rs"
